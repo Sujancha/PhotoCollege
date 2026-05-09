@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
-  Layers, Image as ImageIcon, LayoutGrid, Palette,
-  Type, MoreHorizontal, Upload, X, RotateCcw, ChevronDown,
+  Layers, LayoutGrid, Palette, Type, MoreHorizontal,
+  Upload, X, RotateCcw, ChevronDown, Check,
 } from 'lucide-react';
 import CanvasEditor from './CanvasEditor';
 import SlideNavigator from './SlideNavigator';
@@ -14,15 +14,15 @@ import { RATIOS } from '../constants';
 import { generateId } from '../utils';
 
 const TABS = [
-  { id: 'photos',    label: 'Photos',   Icon: ImageIcon },
-  { id: 'templates', label: 'Layout',   Icon: LayoutGrid },
-  { id: 'presets',   label: 'Presets',  Icon: Palette },
-  { id: 'text',      label: 'Text',     Icon: Type },
-  { id: 'more',      label: 'More',     Icon: MoreHorizontal },
+  { id: 'templates', label: 'Layout',  Icon: LayoutGrid },
+  { id: 'presets',   label: 'Presets', Icon: Palette },
+  { id: 'text',      label: 'Text',    Icon: Type },
+  { id: 'more',      label: 'More',    Icon: MoreHorizontal },
 ];
 
-// ─── Mobile Photos Panel ─────────────────────────────────────────────────────
-function MobilePhotosPanel({ photos, currentSlide, selectedZone, onAssign, onUnassign, onAdd, onRemove, accentColor }) {
+// ─── Zone Photo Picker ────────────────────────────────────────────────────────
+// Bottom sheet that appears when the user taps a canvas zone.
+function ZonePhotoPicker({ zone, photos, currentSlide, onAssign, onUnassign, onAdd, onClose, accentColor }) {
   const fileRef = useRef();
 
   const processFiles = useCallback((files) => {
@@ -44,87 +44,120 @@ function MobilePhotosPanel({ photos, currentSlide, selectedZone, onAssign, onUna
     });
   }, [onAdd]);
 
-  // Build assignment lookup
   const assignments = useMemo(() => currentSlide?.photoAssignments || {}, [currentSlide?.photoAssignments]);
-  const photoZoneMap = useMemo(() => {
-    const map = {};
-    Object.entries(assignments).forEach(([zoneKey, photoId]) => {
-      const idx = parseInt(zoneKey.replace('zone-', ''), 10);
-      map[photoId] = { key: zoneKey, label: `Z${idx + 1}` };
-    });
-    return map;
-  }, [assignments]);
+  const assignedPhotoId = assignments[zone];
+
+  const slotLabel = zone ? `Slot ${parseInt(zone.replace('zone-', ''), 10) + 1}` : '';
 
   return (
-    <div style={{ padding: '10px 12px' }}>
-      {selectedZone ? (
-        <div style={{ marginBottom: 10, padding: '7px 10px', background: '#111', border: `1px solid ${accentColor}44`, borderRadius: 4, fontSize: 11, color: accentColor, fontFamily: 'DM Sans, sans-serif' }}>
-          Tap a photo to assign it to <strong>{selectedZone.replace('zone-', 'Slot ')}</strong>
-        </div>
-      ) : (
-        <div style={{ marginBottom: 10, padding: '7px 10px', background: '#111', border: '1px solid #2A2A2A', borderRadius: 4, fontSize: 11, color: '#555', fontFamily: 'DM Sans, sans-serif' }}>
-          Tap a canvas zone first, then tap a photo to assign it.
-        </div>
-      )}
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.5)' }}
+      />
 
-      {/* Import */}
-      <button
-        onClick={() => fileRef.current.click()}
-        style={{ width: '100%', padding: '11px', marginBottom: 10, background: '#1A1A1A', border: '1px dashed #3A3A3A', color: '#888', cursor: 'pointer', borderRadius: 4, fontSize: 12, fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
-      >
-        <Upload size={14} /> Import Photos
-      </button>
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }}
-        onChange={e => { processFiles(e.target.files); e.target.value = ''; }} />
-
-      {photos.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#333', fontSize: 11, fontFamily: 'DM Sans, sans-serif', padding: '20px 0' }}>
-          No photos yet — tap Import to add some.
+      {/* Sheet */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 151,
+        background: '#1A1A1A', borderRadius: '16px 16px 0 0',
+        maxHeight: '72vh', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.7)',
+      }}>
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+          <div style={{ width: 36, height: 4, background: '#333', borderRadius: 2 }} />
         </div>
-      )}
 
-      {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-        {photos.map((photo, idx) => {
-          const zone = photoZoneMap[photo.id];
-          const isInSelected = zone?.key === selectedZone;
-          return (
-            <div
-              key={photo.id}
-              style={{ position: 'relative', aspectRatio: '1', cursor: selectedZone ? 'pointer' : 'default', borderRadius: 4, overflow: 'hidden', border: `2px solid ${isInSelected ? accentColor : zone ? accentColor + '55' : '#2A2A2A'}`, background: '#111' }}
-              onClick={() => {
-                if (!selectedZone) return;
-                if (isInSelected) onUnassign(selectedZone);
-                else onAssign(selectedZone, photo.id);
-              }}
-            >
-              <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              {/* Index badge */}
-              <div style={{ position: 'absolute', top: 3, left: 3, background: 'rgba(0,0,0,0.72)', color: '#888', fontSize: 8, fontFamily: 'DM Mono, monospace', fontWeight: 700, padding: '1px 4px', borderRadius: 2 }}>
-                {idx + 1}
-              </div>
-              {/* Zone badge */}
-              {zone && (
-                <div style={{ position: 'absolute', bottom: 3, left: 3, background: accentColor, color: '#000', fontSize: 8, fontFamily: 'DM Mono, monospace', fontWeight: 700, padding: '1px 4px', borderRadius: 2 }}>
-                  {zone.label}
-                </div>
-              )}
-              {/* Remove */}
-              <button
-                onClick={e => { e.stopPropagation(); onRemove(photo.id); }}
-                style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, background: 'rgba(0,0,0,0.75)', border: 'none', color: '#aaa', cursor: 'pointer', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-              >
-                <X size={10} />
-              </button>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 16px 10px', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0', fontFamily: 'DM Sans, sans-serif' }}>
+              Choose photo for {slotLabel}
             </div>
-          );
-        })}
+            {assignedPhotoId && (
+              <div style={{ fontSize: 10, color: '#666', fontFamily: 'DM Sans, sans-serif', marginTop: 2 }}>
+                Tap assigned photo to remove it
+              </div>
+            )}
+          </div>
+          <button onClick={onClose}
+            style={{ width: 28, height: 28, background: '#2A2A2A', border: 'none', borderRadius: '50%', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Import row */}
+        <div style={{ padding: '0 14px 10px', flexShrink: 0 }}>
+          <button onClick={() => fileRef.current.click()}
+            style={{ width: '100%', padding: '10px', background: '#111', border: '1px dashed #3A3A3A', color: '#888', cursor: 'pointer', borderRadius: 6, fontSize: 12, fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+            <Upload size={13} /> Import more photos
+          </button>
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }}
+            onChange={e => { processFiles(e.target.files); e.target.value = ''; }} />
+        </div>
+
+        {/* Photo grid */}
+        <div style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0 14px 24px' }}>
+          {photos.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#444', fontSize: 12, fontFamily: 'DM Sans, sans-serif', padding: '24px 0' }}>
+              No photos yet — tap Import above to add some.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {photos.map((photo, idx) => {
+                const isAssignedHere = assignments[zone] === photo.id;
+                // find if this photo is used in another zone
+                const otherZone = Object.entries(assignments).find(([z, id]) => id === photo.id && z !== zone);
+                const otherLabel = otherZone ? `Slot ${parseInt(otherZone[0].replace('zone-', ''), 10) + 1}` : null;
+
+                return (
+                  <div key={photo.id}
+                    onClick={() => {
+                      if (isAssignedHere) {
+                        onUnassign(zone);
+                        onClose();
+                      } else {
+                        onAssign(zone, photo.id);
+                        onClose();
+                      }
+                    }}
+                    style={{ position: 'relative', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', border: `2px solid ${isAssignedHere ? accentColor : '#2A2A2A'}`, background: '#111' }}
+                  >
+                    <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+
+                    {/* Number badge */}
+                    <div style={{ position: 'absolute', top: 4, left: 4, background: 'rgba(0,0,0,0.72)', color: '#aaa', fontSize: 8, fontFamily: 'DM Mono, monospace', fontWeight: 700, padding: '1px 4px', borderRadius: 2 }}>
+                      {idx + 1}
+                    </div>
+
+                    {/* Assigned-here checkmark */}
+                    {isAssignedHere && (
+                      <div style={{ position: 'absolute', inset: 0, background: `${accentColor}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ background: accentColor, borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Check size={14} color="#000" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Used in another slot badge */}
+                    {otherLabel && !isAssignedHere && (
+                      <div style={{ position: 'absolute', bottom: 4, left: 4, background: accentColor + 'CC', color: '#000', fontSize: 8, fontFamily: 'DM Mono, monospace', fontWeight: 700, padding: '1px 5px', borderRadius: 2 }}>
+                        {otherLabel}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
-// ─── Mobile More Panel (Borders + Logo) ──────────────────────────────────────
+// ─── More Panel (Borders + Logo) ──────────────────────────────────────────────
 function MobileMorePanel({ currentSlide, updateCurrentSlide, logoDataUrl, setLogoDataUrl, brandKit, selectedZone, flipPhotoInZone, accentColor }) {
   return (
     <div>
@@ -171,10 +204,28 @@ export default function MobileLayout({
   setShowAddSlide, removeSlide, duplicateSlide,
   presets, recentFonts, selectedTextBlock,
 }) {
-  const [activeTab, setActiveTab] = useState(null);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [activeTab, setActiveTab]       = useState(null);
+  const [panelOpen, setPanelOpen]       = useState(false);
+  const [showZonePicker, setShowZonePicker] = useState(false);
   const [exportFormat, setExportFormat] = useState('jpg');
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // When a canvas zone is tapped, show the photo picker sheet
+  const handleZoneSelect = useCallback((zoneKey) => {
+    setSelectedZone(zoneKey);
+    if (zoneKey) {
+      setShowZonePicker(true);
+      // Close bottom panel so canvas is visible behind the picker
+      setPanelOpen(false);
+    } else {
+      setShowZonePicker(false);
+    }
+  }, [setSelectedZone]);
+
+  const closeZonePicker = useCallback(() => {
+    setShowZonePicker(false);
+    setSelectedZone(null);
+  }, [setSelectedZone]);
 
   const openTab = (tabId) => {
     if (activeTab === tabId && panelOpen) {
@@ -213,7 +264,7 @@ export default function MobileLayout({
             ))}
           </div>
 
-          {/* Export button + dropdown */}
+          {/* Export button */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', border: `1px solid ${accentColor}` }}>
               <button
@@ -229,8 +280,7 @@ export default function MobileLayout({
             </div>
 
             {showExportMenu && (
-              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: 4, width: 180, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.7)' }}>
-                {/* Format toggle */}
+              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: 4, width: 180, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.7)' }}>
                 <div style={{ padding: '8px 10px 6px', borderBottom: '1px solid #2A2A2A' }}>
                   <div style={{ fontSize: 8, color: '#555', fontFamily: 'DM Sans', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 5 }}>Format</div>
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -242,17 +292,13 @@ export default function MobileLayout({
                     ))}
                   </div>
                 </div>
-                {[
-                  { label: 'Export This Slide', action: () => { exportCurrentSlide(currentSlide, exportFormat); setShowExportMenu(false); } },
-                ].map(item => (
-                  <button key={item.label} onClick={item.action}
-                    style={{ width: '100%', padding: '10px 12px', background: 'transparent', border: 'none', color: '#F0F0F0', fontSize: 12, fontFamily: 'DM Sans, sans-serif', textAlign: 'left', cursor: 'pointer', display: 'block' }}>
-                    {item.label}
-                  </button>
-                ))}
+                <button onClick={() => { exportCurrentSlide(currentSlide, exportFormat); setShowExportMenu(false); }}
+                  style={{ width: '100%', padding: '10px 12px', background: 'transparent', border: 'none', color: '#F0F0F0', fontSize: 12, fontFamily: 'DM Sans, sans-serif', textAlign: 'left', cursor: 'pointer' }}>
+                  Export This Slide
+                </button>
               </div>
             )}
-            {showExportMenu && <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowExportMenu(false)} />}
+            {showExportMenu && <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setShowExportMenu(false)} />}
           </div>
         </div>
 
@@ -285,7 +331,7 @@ export default function MobileLayout({
           mode={mode}
           accentColor={accentColor}
           selectedZone={selectedZone}
-          setSelectedZone={setSelectedZone}
+          setSelectedZone={handleZoneSelect}
           selectedTextId={selectedTextId}
           setSelectedTextId={setSelectedTextId}
           onUpdateTextBlock={updateTextBlock}
@@ -321,23 +367,10 @@ export default function MobileLayout({
         background: '#1A1A1A',
         borderTop: panelOpen ? '1px solid #2A2A2A' : 'none',
       }}>
-        {/* Drag handle */}
         <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 2px' }}>
           <div style={{ width: 32, height: 3, background: '#333', borderRadius: 2 }} />
         </div>
         <div style={{ height: 'calc(100% - 14px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {activeTab === 'photos' && (
-            <MobilePhotosPanel
-              photos={photos}
-              currentSlide={currentSlide}
-              selectedZone={selectedZone}
-              onAssign={assignPhotoToZone}
-              onUnassign={unassignZone}
-              onAdd={handlePhotosAdded}
-              onRemove={removePhoto}
-              accentColor={accentColor}
-            />
-          )}
           {activeTab === 'templates' && (
             <TemplatesPanel
               mode={mode}
@@ -398,9 +431,23 @@ export default function MobileLayout({
         })}
       </div>
 
+      {/* ── Zone Photo Picker Sheet ──────────────────────────────────────── */}
+      {showZonePicker && selectedZone && (
+        <ZonePhotoPicker
+          zone={selectedZone}
+          photos={photos}
+          currentSlide={currentSlide}
+          onAssign={(zoneKey, photoId) => { assignPhotoToZone(zoneKey, photoId); }}
+          onUnassign={unassignZone}
+          onAdd={handlePhotosAdded}
+          onClose={closeZonePicker}
+          accentColor={accentColor}
+        />
+      )}
+
       {/* Export progress */}
       {exporting && exportProgress && (
-        <div style={{ position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 200, padding: '8px 16px', background: '#1A1A1A', border: '1px solid #2A2A2A', color: '#F0F0F0', fontSize: 12, fontFamily: 'DM Sans, sans-serif', borderRadius: 4, whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 300, padding: '8px 16px', background: '#1A1A1A', border: '1px solid #2A2A2A', color: '#F0F0F0', fontSize: 12, fontFamily: 'DM Sans, sans-serif', borderRadius: 4, whiteSpace: 'nowrap' }}>
           {exportProgress}
         </div>
       )}
