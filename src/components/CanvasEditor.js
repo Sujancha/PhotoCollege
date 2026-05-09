@@ -294,6 +294,7 @@ export default function CanvasEditor({
   selectedZone, setSelectedZone, selectedTextId, setSelectedTextId,
   onUpdateTextBlock, onAssignPhotoToZone, onUpdateZoom, onUpdateZoomPan, onSwapZones,
   logoDataUrl,
+  explicitHeight,
 }) {
   const containerRef = useRef();
   const wrapRef = useRef();
@@ -381,20 +382,21 @@ export default function CanvasEditor({
     const measure = () => {
       if (!wrapRef.current) return;
       const cw = wrapRef.current.clientWidth || wrapRef.current.offsetWidth || window.innerWidth;
-      const ch = wrapRef.current.clientHeight || wrapRef.current.offsetHeight;
-      if (!cw || !ch) return; // skip bad measurements — ResizeObserver will fire again
+      // explicitHeight is passed from MobileLayout to bypass iOS flex height bug
+      const ch = explicitHeight || wrapRef.current.clientHeight || wrapRef.current.offsetHeight || (window.innerHeight - 260);
       const pad = 40;
       const s = Math.min((cw - pad) / canvasW, (ch - pad) / canvasH, 1);
-      displayScaleRef.current = s;
-      setDisplayScale(s);
+      if (s > 0) {
+        displayScaleRef.current = s;
+        setDisplayScale(s);
+      }
     };
     measure();
-    // Retry after layout settles — needed on iOS Safari where initial clientHeight may be 0
-    const t = setTimeout(measure, 100);
+    const t1 = setTimeout(measure, 50);
     const ro = new ResizeObserver(measure);
     if (wrapRef.current) ro.observe(wrapRef.current);
-    return () => { clearTimeout(t); ro.disconnect(); };
-  }, [canvasW, canvasH]);
+    return () => { clearTimeout(t1); ro.disconnect(); };
+  }, [canvasW, canvasH, explicitHeight]);
 
   const dispW = Math.round(canvasW * displayScale);
   const dispH = Math.round(canvasH * displayScale);

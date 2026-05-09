@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   Layers, LayoutGrid, Palette, Type, MoreHorizontal,
   Upload, X, RotateCcw, ChevronDown, Check,
@@ -210,6 +210,20 @@ export default function MobileLayout({
   const [exportFormat, setExportFormat] = useState('jpg');
   const [showExportMenu, setShowExportMenu] = useState(false);
 
+  // Explicitly compute canvas area height to work around iOS Safari flex height bug
+  // Fixed chrome: topBar(48+34+1) + slideNav(68+1) + tabBar(56+1) = 209px
+  const CHROME_H = 209;
+  const [canvasAreaH, setCanvasAreaH] = useState(() => Math.max(100, window.innerHeight - CHROME_H));
+  useEffect(() => {
+    const compute = () => {
+      const drawerH = panelOpen ? window.innerHeight * 0.5 : 0;
+      setCanvasAreaH(Math.max(100, window.innerHeight - CHROME_H - drawerH));
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, [panelOpen]);
+
   // When a canvas zone is tapped, show the photo picker sheet
   const handleZoneSelect = useCallback((zoneKey) => {
     setSelectedZone(zoneKey);
@@ -323,7 +337,7 @@ export default function MobileLayout({
       </div>
 
       {/* ── Canvas ──────────────────────────────────────────────────────── */}
-      <div style={{ flex: '1 1 0', overflow: 'hidden', minHeight: 0 }}>
+      <div style={{ height: canvasAreaH, overflow: 'hidden', flexShrink: 0 }}>
         <CanvasEditor
           slide={currentSlide}
           ratio={ratio}
@@ -340,6 +354,7 @@ export default function MobileLayout({
           onUpdateZoomPan={updateZoomPan}
           onSwapZones={swapZonePhotos}
           logoDataUrl={brandKit?.logoDataUrl || logoDataUrl}
+          explicitHeight={canvasAreaH}
         />
       </div>
 
