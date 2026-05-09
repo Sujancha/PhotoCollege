@@ -1,7 +1,6 @@
 import React from 'react';
 
 function PresetSwatch({ preset, isActive, onClick, accentColor }) {
-  // Generate a sample color to represent the filter visually
   const swatchStyle = {
     width: 52,
     height: 38,
@@ -45,8 +44,16 @@ function PresetSwatch({ preset, isActive, onClick, accentColor }) {
   );
 }
 
-export default function PresetsPanel({ presets, slide, selectedZone, onApplyToZone, onApplyToAll, accentColor }) {
-  const activeZonePreset = selectedZone ? (slide.presets?.[selectedZone] || slide.globalPreset || 'natural') : (slide.globalPreset || 'natural');
+export default function PresetsPanel({ presets, slide, selectedZone, onApplyToZone, onApplyToAll, onUpdatePresetOpacity, accentColor }) {
+  const activeZonePreset = selectedZone
+    ? (slide.presets?.[selectedZone] || slide.globalPreset || 'natural')
+    : (slide.globalPreset || 'natural');
+
+  const activeOpacity = selectedZone
+    ? (slide.presetOpacity?.[selectedZone] ?? slide.globalPresetOpacity ?? 1)
+    : (slide.globalPresetOpacity ?? 1);
+
+  const showSlider = activeZonePreset !== 'natural';
 
   return (
     <div className="p-3">
@@ -64,6 +71,33 @@ export default function PresetsPanel({ presets, slide, selectedZone, onApplyToZo
         >
           Apply to All Zones
         </button>
+      )}
+
+      {/* Effect intensity slider — shown whenever a non-natural preset is active */}
+      {showSlider && (
+        <div style={{ marginBottom: 12, padding: '8px 10px', background: '#111', border: `1px solid ${accentColor}33`, borderRadius: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 9, color: accentColor, fontFamily: 'DM Sans, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Effect Intensity
+            </span>
+            <span style={{ fontSize: 10, color: '#888', fontFamily: 'DM Mono, monospace', minWidth: 32, textAlign: 'right' }}>
+              {Math.round(activeOpacity * 100)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(activeOpacity * 100)}
+            onChange={e => onUpdatePresetOpacity(Number(e.target.value) / 100, selectedZone)}
+            className="w-full"
+            style={{ accentColor }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+            <span style={{ fontSize: 7, color: '#444', fontFamily: 'DM Sans' }}>0% Original</span>
+            <span style={{ fontSize: 7, color: '#444', fontFamily: 'DM Sans' }}>100% Full effect</span>
+          </div>
+        </div>
       )}
 
       {/* Preset grid */}

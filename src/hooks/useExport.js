@@ -1,15 +1,18 @@
 import { useCallback, useState } from 'react';
-import { RATIOS, TEMPLATE_CATEGORIES } from '../constants';
+import { RATIOS, TEMPLATE_CATEGORIES, WEDDING_PRESETS, SPORTS_PRESETS } from '../constants';
 import { getTemplate, computeZones, loadAllFontsForExport } from '../utils';
+
+const ALL_PRESETS = [...WEDDING_PRESETS, ...SPORTS_PRESETS];
 
 function getExportDims(ratioId) {
   const r = RATIOS.find(r => r.id === ratioId) || RATIOS[0];
-  return { w: r.exportW, h: r.exportH, displayW: r.w, displayH: r.h };
+  return { w: r.exportW, h: r.exportH, canvasW: r.w, canvasH: r.h };
 }
 
 async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
-  const { w, h, displayW } = getExportDims(ratioId);
-  const scale = w / displayW;
+  const { w, h, canvasW } = getExportDims(ratioId);
+  // scale converts canvas units → export pixels
+  const scale = w / canvasW;
 
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -17,10 +20,9 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
   const ctx = canvas.getContext('2d');
 
   // Background
-  ctx.fillStyle = slide.borderSettings?.bgColor || '#000000';
+  ctx.fillStyle = slide.borderSettings?.bgColor || '#FFFFFF';
   ctx.fillRect(0, 0, w, h);
 
-  // Get template
   const tmpl = getTemplate(slide.templateId, TEMPLATE_CATEGORIES);
   if (!tmpl) return canvas;
 
@@ -30,8 +32,8 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
   // Draw photo zones
   for (let i = 0; i < zones.length; i++) {
     const zone = zones[i];
-    const photoKey = `zone-${i}`;
-    const photoId = slide.photoAssignments[photoKey];
+    const zoneKey = `zone-${i}`;
+    const photoId = slide.photoAssignments?.[zoneKey];
     const photo = photos.find(p => p.id === photoId);
 
     ctx.save();
@@ -42,38 +44,56 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
     if (photo?.url) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      await new Promise(res => {
-        img.onload = res;
-        img.onerror = res;
-        img.src = photo.url;
-      });
-
-      // Apply CSS filter via canvas filter property
-      const preset = slide.presets?.[photoKey] || slide.globalPreset || 'natural';
-      // canvas filter is supported in modern browsers
-      if (preset !== 'natural') {
-        // We use the filter string directly
-      }
-
-      // Calculate scale to cover the zone
-      const panX = slide.zoom?.x?.[photoKey] ?? 0;
-      const panY = slide.zoom?.y?.[photoKey] ?? 0;
-      const photoScale = slide.zoom?.scale?.[photoKey] ?? 1;
+      await new Promise(res => { img.onload = res; img.onerror = res; img.src = photo.url; });
 
       const imgW = img.naturalWidth;
       const imgH = img.naturalHeight;
-      const coverScale = Math.max(zone.w / imgW, zone.h / imgH) * photoScale;
-      const dw = imgW * coverScale;
-      const dh = imgH * coverScale;
-      const dx = zone.x + (zone.w - dw) / 2 + panX * scale;
-      const dy = zone.y + (zone.h - dh) / 2 + panY * scale;
 
-      if (photo.flipH) {
-        ctx.translate(zone.x + zone.w, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(img, -(dx - zone.x + dw), dy, dw, dh);
+      // New scale model: storedScale = canvas_units/photo_px → multiply by export scale
+      const storedScale = slide.zoom?.scale?.[zoneKey];
+      let dw, dh;
+      if (storedScale != null) {
+        dw = imgW * storedScale * scale;
+        dh = imgH * storedScale * scale;
       } else {
-        ctx.drawImage(img, dx, dy, dw, dh);
+        // Fallback: CSS cover
+        const cs = Math.max(zone.w / imgW, zone.h / imgH);
+        dw = imgW * cs;
+        dh = imgH * cs;
+      }
+
+      const panX = (slide.zoom?.x?.[zoneKey] ?? 0) * scale;
+      const panY = (slide.zoom?.y?.[zoneKey] ?? 0) * scale;
+      const dx = zone.x + (zone.w - dw) / 2 + panX;
+      const dy = zone.y + (zone.h - dh) / 2 + panY;
+
+      // Draw base image (no filter)
+      const drawImg = (extraTranslateX = 0) => {
+        if (photo.flipH) {
+          ctx.save();
+          ctx.translate(zone.x + zone.w + extraTranslateX, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(img, -(dx - zone.x + dw) + extraTranslateX, dy, dw, dh);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, dx, dy, dw, dh);
+        }
+      };
+
+      ctx.filter = 'none';
+      drawImg();
+
+      // Apply color preset as a second pass at reduced opacity
+      const presetId = slide.presets?.[zoneKey] || slide.globalPreset || 'natural';
+      const presetOpacity = slide.presetOpacity?.[zoneKey] ?? slide.globalPresetOpacity ?? 1;
+      const presetObj = ALL_PRESETS.find(p => p.id === presetId);
+
+      if (presetObj && presetObj.filter !== 'none' && presetOpacity > 0) {
+        ctx.globalAlpha = presetOpacity;
+        ctx.filter = presetObj.filter;
+        drawImg();
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1;
       }
     } else {
       ctx.fillStyle = '#1a1a1a';
@@ -81,18 +101,6 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
     }
 
     ctx.restore();
-
-    // Blend mode zone (double exposure)
-    if (zone.blendMode && photo?.url) {
-      ctx.save();
-      ctx.globalCompositeOperation = zone.blendMode;
-      ctx.globalAlpha = zone.opacity ?? 1;
-      ctx.beginPath();
-      ctx.rect(zone.x, zone.y, zone.w, zone.h);
-      ctx.clip();
-      // re-draw with blend
-      ctx.restore();
-    }
   }
 
   // Gradient overlays
@@ -111,7 +119,7 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
 
   // Vignette
   if (slide.borderSettings?.vignette || tmpl.vignette) {
-    const vigGrad = ctx.createRadialGradient(w/2, h/2, h*0.2, w/2, h/2, h*0.85);
+    const vigGrad = ctx.createRadialGradient(w / 2, h / 2, h * 0.2, w / 2, h / 2, h * 0.85);
     vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
     vigGrad.addColorStop(1, 'rgba(0,0,0,0.7)');
     ctx.fillStyle = vigGrad;
@@ -151,7 +159,6 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
       ctx.shadowOffsetY = 2 * scale;
     }
 
-    // Background pill
     if (tb.bgPill) {
       const metrics = ctx.measureText(displayText);
       const pillW = metrics.width + 24 * scale;
@@ -168,7 +175,6 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
       }
     }
 
-    // Gradient or solid fill
     if (tb.gradient) {
       const metrics = ctx.measureText(displayText);
       const textW = metrics.width;
@@ -208,47 +214,59 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
   return canvas;
 }
 
+function blobToDownload(canvas, filename, format) {
+  const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+  const quality = 1.0; // always maximum quality
+  return new Promise(res => {
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      res();
+    }, mimeType, quality);
+  });
+}
+
 export function useExport(slides, photos, logoDataUrl, currentRatio) {
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState('');
 
-  const exportCurrentSlide = useCallback(async (slide) => {
+  const exportCurrentSlide = useCallback(async (slide, format = 'jpg') => {
     setExporting(true);
     setExportProgress('Rendering…');
     try {
       await loadAllFontsForExport([...new Set(slide.textBlocks?.map(t => t.font) || [])]);
       const canvas = await renderSlideToCanvas(slide, photos, logoDataUrl, slide.ratio || currentRatio);
-      canvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'slide.png';
-        a.click();
-        URL.revokeObjectURL(url);
-        setExporting(false);
-        setExportProgress('');
-      }, 'image/png', 1.0);
+      const ext = format === 'png' ? 'png' : 'jpg';
+      await blobToDownload(canvas, `slide.${ext}`, format);
     } catch (e) {
       console.error(e);
-      setExporting(false);
       setExportProgress('Export failed. Please try again.');
       setTimeout(() => setExportProgress(''), 3000);
+    } finally {
+      setExporting(false);
+      setExportProgress('');
     }
   }, [photos, logoDataUrl, currentRatio]);
 
-  const exportAllSlides = useCallback(async () => {
+  const exportAllSlides = useCallback(async (format = 'jpg') => {
     setExporting(true);
     try {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
+      const ext = format === 'png' ? 'png' : 'jpg';
+      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
 
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
         setExportProgress(`Exporting slide ${i + 1} of ${slides.length}…`);
         await loadAllFontsForExport([...new Set(slide.textBlocks?.map(t => t.font) || [])]);
         const canvas = await renderSlideToCanvas(slide, photos, logoDataUrl, slide.ratio || currentRatio);
-        const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 1.0));
-        zip.file(`slide-${String(i + 1).padStart(2, '0')}.png`, blob);
+        const blob = await new Promise(res => canvas.toBlob(res, mimeType, 1.0));
+        zip.file(`slide-${String(i + 1).padStart(2, '0')}.${ext}`, blob);
       }
 
       setExportProgress('Packaging ZIP…');
@@ -256,7 +274,7 @@ export function useExport(slides, photos, logoDataUrl, currentRatio) {
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'carousel-slides.zip';
+      a.download = `carousel-slides.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -269,25 +287,20 @@ export function useExport(slides, photos, logoDataUrl, currentRatio) {
     }
   }, [slides, photos, logoDataUrl, currentRatio]);
 
-  const exportTikTok = useCallback(async (slide) => {
+  const exportTikTok = useCallback(async (slide, format = 'jpg') => {
     setExporting(true);
     setExportProgress('TikTok export…');
     try {
       const tiktokSlide = { ...slide, ratio: '9:16' };
       await loadAllFontsForExport([...new Set(slide.textBlocks?.map(t => t.font) || [])]);
       const canvas = await renderSlideToCanvas(tiktokSlide, photos, logoDataUrl, '9:16');
-      canvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'tiktok-slide.png';
-        a.click();
-        URL.revokeObjectURL(url);
-        setExporting(false);
-        setExportProgress('');
-      }, 'image/png', 1.0);
+      const ext = format === 'png' ? 'png' : 'jpg';
+      await blobToDownload(canvas, `tiktok-slide.${ext}`, format);
     } catch (e) {
+      console.error(e);
+    } finally {
       setExporting(false);
+      setExportProgress('');
     }
   }, [photos, logoDataUrl]);
 

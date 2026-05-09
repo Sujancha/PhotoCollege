@@ -17,7 +17,7 @@ const TABS = [
 export default function RightSidebar({
   mode, tab, setTab, accentColor, slide, selectedZone, selectedTextBlock,
   photos, presets, recentFonts,
-  onApplyTemplate, onApplyPresetToZone, onApplyPresetToAll,
+  onApplyTemplate, onApplyPresetToZone, onApplyPresetToAll, onUpdatePresetOpacity,
   onUpdateTextBlock, onDeleteTextBlock, onApplyQuickStyle, onAddTextWithStyle,
   onUpdateBorderSettings, onUpdateLogoSettings, logoDataUrl, onLogoUpload, onFlipZone,
 }) {
@@ -74,6 +74,7 @@ export default function RightSidebar({
             selectedZone={selectedZone}
             onApplyToZone={onApplyPresetToZone}
             onApplyToAll={onApplyPresetToAll}
+            onUpdatePresetOpacity={onUpdatePresetOpacity}
             accentColor={accentColor}
           />
         )}

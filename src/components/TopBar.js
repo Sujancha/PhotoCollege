@@ -8,6 +8,7 @@ export default function TopBar({
   onAddText, onBrandKit, onResetAllEffects,
 }) {
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportFormat, setExportFormat] = useState('jpg');
 
   return (
     <div className="flex items-center px-4 gap-4 flex-shrink-0"
@@ -135,7 +136,7 @@ export default function TopBar({
         <div className="flex items-center rounded overflow-hidden"
           style={{ border: `1px solid ${accentColor}` }}>
           <button
-            onClick={onExportCurrent}
+            onClick={() => onExportCurrent(exportFormat)}
             disabled={exporting}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs btn-hover"
             style={{
@@ -171,12 +172,27 @@ export default function TopBar({
         {showExportMenu && (
           <div
             className="absolute right-0 top-full mt-1 rounded overflow-hidden z-50"
-            style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', width: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}
+            style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', width: 210, boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}
           >
+            {/* Format selector */}
+            <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid #2A2A2A' }}>
+              <div style={{ fontSize: 9, color: '#555', fontFamily: 'DM Sans, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 5 }}>Format</div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {['jpg', 'png'].map(f => (
+                  <button key={f} onClick={() => setExportFormat(f)}
+                    style={{ flex: 1, padding: '4px 0', fontSize: 10, background: exportFormat === f ? accentColor : '#252525', color: exportFormat === f ? '#000' : '#888', border: 'none', borderRadius: 2, cursor: 'pointer', fontFamily: 'DM Mono, monospace', fontWeight: 600, letterSpacing: '0.05em' }}>
+                    {f.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 8, color: '#444', fontFamily: 'DM Sans', marginTop: 4 }}>
+                {exportFormat === 'jpg' ? 'Max quality JPEG · smaller file' : 'Lossless PNG · full quality'}
+              </div>
+            </div>
             {[
-              { label: 'Export Current Slide', action: () => { onExportCurrent(); setShowExportMenu(false); } },
-              { label: 'Export All as ZIP', action: () => { onExportAll(); setShowExportMenu(false); } },
-              { label: 'TikTok Ready (9:16)', action: () => { onExportTikTok(); setShowExportMenu(false); } },
+              { label: 'Export Current Slide', action: () => { onExportCurrent(exportFormat); setShowExportMenu(false); } },
+              { label: 'Export All as ZIP', action: () => { onExportAll(exportFormat); setShowExportMenu(false); } },
+              { label: 'TikTok Ready (9:16)', action: () => { onExportTikTok(exportFormat); setShowExportMenu(false); } },
             ].map(item => (
               <button
                 key={item.label}

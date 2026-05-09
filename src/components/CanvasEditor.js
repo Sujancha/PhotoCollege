@@ -4,8 +4,29 @@ import { getTemplate, computeZones } from '../utils';
 
 const ALL_PRESETS = [...WEDDING_PRESETS, ...SPORTS_PRESETS];
 
+// Two-layer image: base (no filter) + filtered overlay at variable opacity
+function PhotoImageLayers({ url, panX, panY, flipH, imgCSSW, imgCSSH, filterStr, filterOpacity }) {
+  const base = {
+    position: 'absolute', top: '50%', left: '50%',
+    ...(imgCSSW != null ? { width: imgCSSW, height: imgCSSH, minWidth: 'unset', minHeight: 'unset' }
+      : { minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto' }),
+    maxWidth: 'none', maxHeight: 'none',
+    transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))${flipH ? ' scaleX(-1)' : ''}`,
+    transformOrigin: 'center center',
+    pointerEvents: 'none',
+  };
+  return (
+    <>
+      <img src={url} alt="" draggable={false} style={{ ...base, filter: 'none' }} />
+      {filterStr !== 'none' && (
+        <img src={url} alt="" draggable={false} style={{ ...base, filter: filterStr, opacity: filterOpacity }} />
+      )}
+    </>
+  );
+}
+
 // ─── PHOTO ZONE ──────────────────────────────────────────────────────────────────
-function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accentColor, isSelected,
+function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, presetOpacity, accentColor, isSelected,
   onClick, onZoomDelta, flipH, panX, panY, imgCSSW, imgCSSH, onPan, onZoneDragStart, onZoneDrop }) {
 
   const presetObj = ALL_PRESETS.find(p => p.id === preset);
@@ -105,33 +126,11 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accent
       }}
     >
       {photo?.url ? (
-        <img
-          src={photo.url}
-          alt=""
-          draggable={false}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            // Explicit size when we have a stored scale; otherwise fall back to CSS cover
-            ...(imgCSSW != null ? {
-              width: imgCSSW,
-              height: imgCSSH,
-              minWidth: 'unset',
-              minHeight: 'unset',
-            } : {
-              minWidth: '100%',
-              minHeight: '100%',
-              width: 'auto',
-              height: 'auto',
-            }),
-            maxWidth: 'none',
-            maxHeight: 'none',
-            transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))${flipH ? ' scaleX(-1)' : ''}`,
-            transformOrigin: 'center center',
-            filter: filterStr,
-            pointerEvents: 'none',
-          }}
+        <PhotoImageLayers
+          url={photo.url}
+          panX={panX} panY={panY} flipH={flipH}
+          imgCSSW={imgCSSW} imgCSSH={imgCSSH}
+          filterStr={filterStr} filterOpacity={presetOpacity ?? 1}
         />
       ) : (
         <div style={{ width: '100%', height: '100%', background: '#0A0A0A',
@@ -194,14 +193,15 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
   const [editing, setEditing] = useState(false);
   const dragStart = useRef(null);
 
-  // Gradient text support via background-clip trick
+  // Use backgroundImage (not background shorthand) so it never resets backgroundClip
   const gradientStyle = tb.gradient ? {
-    background: `linear-gradient(${tb.gradient.angle ?? 135}deg, ${tb.gradient.stops.join(', ')})`,
+    backgroundImage: `linear-gradient(${tb.gradient.angle ?? 135}deg, ${tb.gradient.stops.join(', ')})`,
+    backgroundColor: 'transparent',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
     color: 'transparent',
-  } : { color: tb.color };
+  } : { color: tb.color, backgroundImage: 'none', WebkitTextFillColor: 'unset' };
 
   const textStyle = {
     fontFamily: `"${tb.font}", sans-serif`,
@@ -218,7 +218,7 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
     wordBreak: 'break-word',
     width: tb.width || 400,
     outline: 'none',
-    background: 'transparent',
+    backgroundColor: 'transparent', // use backgroundColor, not background, to avoid clearing backgroundImage
     border: 'none',
     cursor: editing ? 'text' : 'move',
     resize: 'none',
@@ -277,7 +277,7 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
             onChange={e => onUpdate(tb.id, { text: e.target.value })}
             onBlur={() => setEditing(false)}
             onMouseDown={e => e.stopPropagation()}
-            style={{ ...textStyle, cursor: 'text', background: 'transparent', padding: 0 }}
+            style={{ ...textStyle, cursor: 'text', backgroundColor: 'transparent', padding: 0 }}
             rows={3}
           />
         ) : (
@@ -422,6 +422,7 @@ export default function CanvasEditor({
           const photo = photos.find(p => p.id === photoId);
           const photoIndex = photoId ? photos.findIndex(p => p.id === photoId) : -1;
           const presetId = slide.presets?.[zoneKey] || slide.globalPreset || 'natural';
+          const presetOpacity = slide.presetOpacity?.[zoneKey] ?? slide.globalPresetOpacity ?? 1;
           const scaledZone = {
             x: zone.x * displayScale, y: zone.y * displayScale,
             w: zone.w * displayScale, h: zone.h * displayScale,
@@ -444,6 +445,7 @@ export default function CanvasEditor({
               photoIndex={photoIndex}
               photo={photo}
               preset={presetId}
+              presetOpacity={presetOpacity}
               accentColor={accentColor}
               isSelected={selectedZone === zoneKey}
               onClick={handleZoneClick}

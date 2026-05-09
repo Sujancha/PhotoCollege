@@ -316,6 +316,14 @@ export default function App() {
     updateCurrentSlide({ globalPreset: presetId, presets: {} });
   }, [updateCurrentSlide]);
 
+  const updatePresetOpacity = useCallback((opacity, zoneKey) => {
+    if (zoneKey) {
+      updateCurrentSlide({ presetOpacity: { ...currentSlide.presetOpacity, [zoneKey]: opacity } });
+    } else {
+      updateCurrentSlide({ globalPresetOpacity: opacity });
+    }
+  }, [currentSlide, updateCurrentSlide]);
+
   const updateZoom = useCallback((zoneKey, axis, value) => {
     const zoom = { ...currentSlide.zoom };
     zoom[axis] = { ...zoom[axis], [zoneKey]: value };
@@ -344,7 +352,7 @@ export default function App() {
         accentColor={accentColor}
         onExportCurrent={() => exportCurrentSlide(currentSlide)}
         onExportAll={exportAllSlides}
-        onExportTikTok={() => exportTikTok(currentSlide)}
+        onExportTikTok={(fmt) => exportTikTok(currentSlide, fmt)}
         exporting={exporting}
         exportProgress={exportProgress}
         onAddText={addTextBlock}
@@ -412,6 +420,7 @@ export default function App() {
           onApplyTemplate={applyTemplate}
           onApplyPresetToZone={applyPresetToZone}
           onApplyPresetToAll={applyPresetToAll}
+          onUpdatePresetOpacity={updatePresetOpacity}
           onUpdateTextBlock={updateTextBlock}
           onDeleteTextBlock={deleteTextBlock}
           onApplyQuickStyle={applyQuickStyle}
