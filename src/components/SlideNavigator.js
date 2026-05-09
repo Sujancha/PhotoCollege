@@ -5,8 +5,9 @@ import { getTemplate, computeZones } from '../utils';
 
 function SlideMiniPreview({ slide, photos, ratio, accentColor, isActive, onClick, idx, compact }) {
   const tmpl = getTemplate(slide.templateId, TEMPLATE_CATEGORIES);
-  const previewW = compact ? 40 : 60;
-  const previewH = Math.round(previewW * (ratio.h / ratio.w));
+  const previewW = compact ? 32 : 60;
+  const maxH = compact ? 44 : 100;
+  const previewH = Math.min(Math.round(previewW * (ratio.h / ratio.w)), maxH);
 
   return (
     <div
