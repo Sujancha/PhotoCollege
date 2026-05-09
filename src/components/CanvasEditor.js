@@ -4,33 +4,40 @@ import { getTemplate, computeZones } from '../utils';
 
 const ALL_PRESETS = [...WEDDING_PRESETS, ...SPORTS_PRESETS];
 
-function PhotoZone({ zone, zoneKey, photo, preset, accentColor, isSelected, onClick, onWheel, flipH, panX, panY, photoScale, onPan }) {
+// ─── PHOTO ZONE ──────────────────────────────────────────────────────────────────
+function PhotoZone({ zone, zoneKey, zoneIndex, photo, preset, accentColor, isSelected,
+  onClick, onWheel, flipH, panX, panY, photoScale, onPan, onZoneDragStart, onZoneDrop }) {
+
   const presetObj = ALL_PRESETS.find(p => p.id === preset);
   const filterStr = presetObj?.filter || 'none';
 
-  const dragging = useRef(false);
+  const draggingPhoto = useRef(false);
   const dragStart = useRef(null);
+  const [dropOver, setDropOver] = useState(false);
+  const [isDraggingOut, setIsDraggingOut] = useState(false);
 
+  // Mouse drag to pan (only when zone already selected)
   const handleMouseDown = useCallback((e) => {
+    if (e.button !== 0) return;
+
     if (!isSelected) {
-      // First click just selects
       onClick(zoneKey);
       return;
     }
     if (!photo?.url) return;
+
     e.preventDefault();
     e.stopPropagation();
-    dragging.current = true;
-    dragStart.current = { mx: e.clientX, my: e.clientY, panX: panX || 0, panY: panY || 0 };
+    draggingPhoto.current = true;
+    dragStart.current = { mx: e.clientX, my: e.clientY, px: panX, py: panY };
 
     const move = (ev) => {
-      if (!dragging.current) return;
-      const dx = ev.clientX - dragStart.current.mx;
-      const dy = ev.clientY - dragStart.current.my;
-      onPan(zoneKey, dragStart.current.panX + dx, dragStart.current.panY + dy);
+      if (!draggingPhoto.current) return;
+      onPan(zoneKey, dragStart.current.px + (ev.clientX - dragStart.current.mx),
+                      dragStart.current.py + (ev.clientY - dragStart.current.my));
     };
     const up = () => {
-      dragging.current = false;
+      draggingPhoto.current = false;
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
     };
@@ -38,65 +45,128 @@ function PhotoZone({ zone, zoneKey, photo, preset, accentColor, isSelected, onCl
     window.addEventListener('mouseup', up);
   }, [isSelected, photo, zoneKey, panX, panY, onPan, onClick]);
 
-  const cursor = isSelected && photo?.url ? 'grab' : 'pointer';
+  // Drag THIS zone's photo out (to swap with another zone)
+  const handleDragStart = (e) => {
+    if (!photo?.url) { e.preventDefault(); return; }
+    setIsDraggingOut(true);
+    e.dataTransfer.setData('photoId', photo.id);
+    e.dataTransfer.setData('sourceType', 'zone');
+    e.dataTransfer.setData('sourceZone', zoneKey);
+    e.dataTransfer.effectAllowed = 'move';
+    onZoneDragStart && onZoneDragStart(zoneKey);
+  };
 
   return (
     <div
       onMouseDown={handleMouseDown}
       onWheel={onWheel}
+      draggable={!!photo?.url}
+      onDragStart={handleDragStart}
+      onDragEnd={() => setIsDraggingOut(false)}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropOver(true); }}
+      onDragLeave={() => setDropOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDropOver(false);
+        onZoneDrop(e, zoneKey);
+      }}
       style={{
         position: 'absolute',
-        left: zone.x,
-        top: zone.y,
-        width: zone.w,
-        height: zone.h,
+        left: zone.x, top: zone.y, width: zone.w, height: zone.h,
         overflow: 'hidden',
-        cursor,
-        boxShadow: isSelected ? `inset 0 0 0 2px ${accentColor}` : 'none',
+        cursor: isSelected && photo?.url ? 'grab' : 'pointer',
+        outline: isSelected
+          ? `2px solid ${accentColor}`
+          : dropOver ? `2px dashed ${accentColor}88` : 'none',
+        outlineOffset: isSelected ? -2 : 0,
         zIndex: isSelected ? 2 : 1,
         background: '#0A0A0A',
         userSelect: 'none',
+        opacity: isDraggingOut ? 0.4 : 1,
+        transition: 'opacity 150ms',
+        boxSizing: 'border-box',
       }}
     >
       {photo?.url ? (
-        <div
+        <img
+          src={photo.url}
+          alt=""
+          draggable={false}
           style={{
             position: 'absolute',
-            inset: 0,
-            backgroundImage: `url("${photo.url}")`,
-            backgroundSize: `${Math.round((photoScale || 1) * 100)}%`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: `calc(50% + ${panX || 0}px) calc(50% + ${panY || 0}px)`,
+            top: '50%',
+            left: '50%',
+            // Cover: min-width/height 100% ensures the image always fills the zone
+            minWidth: '100%',
+            minHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            maxWidth: 'none',
+            maxHeight: 'none',
+            // Transform: center → pan → zoom → flip
+            transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${photoScale || 1}) ${flipH ? 'scaleX(-1)' : ''}`,
+            transformOrigin: 'center center',
             filter: filterStr,
-            transform: flipH ? 'scaleX(-1)' : 'none',
-            transformOrigin: 'center',
+            pointerEvents: 'none',
           }}
         />
       ) : (
-        <div style={{ width: '100%', height: '100%', background: '#0A0A0A' }} />
+        <div style={{ width: '100%', height: '100%', background: '#0A0A0A',
+          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {dropOver && (
+            <span style={{ fontSize: 10, color: accentColor, fontFamily: 'DM Sans, sans-serif' }}>
+              Drop here
+            </span>
+          )}
+        </div>
       )}
 
-      {/* Pan hint when selected */}
+      {/* Zone label */}
+      <div style={{
+        position: 'absolute', top: 4, left: 4, zIndex: 3,
+        background: 'rgba(0,0,0,0.55)', color: '#555',
+        fontSize: 8, fontFamily: 'DM Mono, monospace',
+        padding: '1px 4px', borderRadius: 2, pointerEvents: 'none',
+        opacity: isSelected ? 0 : 0.6,
+      }}>
+        Z{zoneIndex + 1}
+      </div>
+
+      {/* Reframe hint */}
       {isSelected && photo?.url && (
         <div style={{
-          position: 'absolute', bottom: 6, left: 0, right: 0,
+          position: 'absolute', bottom: 5, left: 0, right: 0,
           textAlign: 'center', fontSize: 9, color: accentColor,
           fontFamily: 'DM Sans, sans-serif', pointerEvents: 'none',
-          opacity: 0.8,
-          textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+          textShadow: '0 1px 4px rgba(0,0,0,1)',
         }}>
           drag to reframe · scroll to zoom
+        </div>
+      )}
+
+      {/* Drop indicator overlay */}
+      {dropOver && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 4,
+          background: `${accentColor}18`,
+          border: `2px dashed ${accentColor}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          <span style={{ fontSize: 11, color: accentColor, fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
+            {photo?.url ? '⇄ Swap' : '+ Drop here'}
+          </span>
         </div>
       )}
     </div>
   );
 }
 
+// ─── TEXT BLOCK ──────────────────────────────────────────────────────────────────
 function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
   const [dragging, setDragging] = useState(false);
   const [editing, setEditing] = useState(false);
   const dragStart = useRef(null);
-  const ref = useRef();
 
   const textStyle = {
     fontFamily: `"${tb.font}", sans-serif`,
@@ -122,10 +192,7 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
   };
 
   const pillStyle = tb.bgPill ? {
-    background: 'rgba(0,0,0,0.55)',
-    padding: '4px 12px',
-    borderRadius: 4,
-    display: 'inline-block',
+    background: 'rgba(0,0,0,0.55)', padding: '4px 12px', borderRadius: 4, display: 'inline-block',
   } : {};
 
   const handleMouseDown = (e) => {
@@ -156,11 +223,10 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
     <div
       style={{
         position: 'absolute',
-        left: `${tb.x}%`,
-        top: `${tb.y}%`,
+        left: `${tb.x}%`, top: `${tb.y}%`,
         transform: 'translate(-50%, -50%)',
         zIndex: 10,
-        outline: isSelected ? '1px dashed rgba(255,255,255,0.3)' : 'none',
+        outline: isSelected ? '1px dashed rgba(255,255,255,0.25)' : 'none',
         outlineOffset: 4,
         cursor: dragging ? 'grabbing' : 'grab',
       }}
@@ -171,7 +237,6 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
       <div style={pillStyle}>
         {editing ? (
           <textarea
-            ref={ref}
             autoFocus
             value={tb.text}
             onChange={e => onUpdate(tb.id, { text: e.target.value })}
@@ -188,11 +253,12 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
   );
 }
 
+// ─── CANVAS EDITOR ────────────────────────────────────────────────────────────────
 export default function CanvasEditor({
   slide, ratio, photos, mode, accentColor,
   selectedZone, setSelectedZone, selectedTextId, setSelectedTextId,
-  onUpdateTextBlock, onAssignPhotoToZone, onUpdateZoom,
-  logoDataUrl, allPresets,
+  onUpdateTextBlock, onAssignPhotoToZone, onUpdateZoom, onSwapZones,
+  logoDataUrl,
 }) {
   const containerRef = useRef();
   const wrapRef = useRef();
@@ -216,23 +282,37 @@ export default function CanvasEditor({
   } : null;
 
   const handleZoneClick = useCallback((zoneKey) => {
-    setSelectedZone(zoneKey === selectedZone ? null : zoneKey);
+    setSelectedZone(prev => prev === zoneKey ? null : zoneKey);
     setSelectedTextId(null);
-  }, [selectedZone, setSelectedZone, setSelectedTextId]);
+  }, [setSelectedZone, setSelectedTextId]);
 
   const handleZoneWheel = useCallback((e, zoneKey) => {
     e.preventDefault();
     const current = slide.zoom?.scale?.[zoneKey] ?? 1;
-    const next = Math.max(0.5, Math.min(5, current - e.deltaY * 0.002));
-    onUpdateZoom(zoneKey, 'scale', next);
+    onUpdateZoom(zoneKey, 'scale', Math.max(0.5, Math.min(5, current - e.deltaY * 0.002)));
   }, [slide.zoom, onUpdateZoom]);
 
-  // Pan handler: called by PhotoZone on drag
   const handleZonePan = useCallback((zoneKey, newPanX, newPanY) => {
     const s = displayScaleRef.current || 1;
     onUpdateZoom(zoneKey, 'x', newPanX / s);
     onUpdateZoom(zoneKey, 'y', newPanY / s);
   }, [onUpdateZoom]);
+
+  // Drop handler — handles both library→zone and zone→zone (swap)
+  const handleZoneDrop = useCallback((e, toZone) => {
+    e.preventDefault();
+    const sourceType = e.dataTransfer.getData('sourceType');
+    const photoId = e.dataTransfer.getData('photoId');
+    const fromZone = e.dataTransfer.getData('sourceZone');
+
+    if (sourceType === 'zone' && fromZone && fromZone !== toZone) {
+      // Swap zone assignments
+      onSwapZones(fromZone, toZone);
+    } else if (photoId) {
+      // Assign from library
+      onAssignPhotoToZone(toZone, photoId);
+    }
+  }, [onAssignPhotoToZone, onSwapZones]);
 
   const handleCanvasClick = useCallback((e) => {
     if (e.target === containerRef.current || e.currentTarget === e.target) {
@@ -241,12 +321,7 @@ export default function CanvasEditor({
     }
   }, [setSelectedZone, setSelectedTextId]);
 
-  const handleZoneDrop = useCallback((e, zoneKey) => {
-    e.preventDefault();
-    const photoId = e.dataTransfer.getData('photoId');
-    if (photoId) onAssignPhotoToZone(zoneKey, photoId);
-  }, [onAssignPhotoToZone]);
-
+  // Scale canvas to fit available space
   const [displayScale, setDisplayScale] = useState(1);
   useEffect(() => {
     const measure = () => {
@@ -273,90 +348,81 @@ export default function CanvasEditor({
       style={{ background: '#0D0D0D', position: 'relative' }}
       onClick={handleCanvasClick}
     >
+      {/* Floating canvas */}
       <div
         ref={containerRef}
-        className="canvas-wrapper relative flex-shrink-0"
         style={{
-          width: dispW,
-          height: dispH,
+          width: dispW, height: dispH,
           background: bgColor,
           overflow: 'hidden',
           position: 'relative',
-          boxShadow: '0 4px 40px rgba(0,0,0,0.9), 0 1px 8px rgba(0,0,0,0.5)',
+          flexShrink: 0,
+          boxShadow: '0 4px 48px rgba(0,0,0,0.95), 0 1px 12px rgba(0,0,0,0.6)',
         }}
         onClick={handleCanvasClick}
       >
-        {/* Photo zones */}
+        {/* Photo zones — rendered at display scale */}
         {zones.map((zone, i) => {
           const zoneKey = `zone-${i}`;
           const photoId = slide.photoAssignments?.[zoneKey];
           const photo = photos.find(p => p.id === photoId);
           const presetId = slide.presets?.[zoneKey] || slide.globalPreset || 'natural';
+          const scaledZone = {
+            x: zone.x * displayScale, y: zone.y * displayScale,
+            w: zone.w * displayScale, h: zone.h * displayScale,
+          };
           return (
-            <div
+            <PhotoZone
               key={zoneKey}
-              style={{
-                position: 'absolute',
-                left: zone.x * displayScale,
-                top: zone.y * displayScale,
-                width: zone.w * displayScale,
-                height: zone.h * displayScale,
-              }}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => handleZoneDrop(e, zoneKey)}
-            >
-              <PhotoZone
-                zone={{ x: 0, y: 0, w: zone.w * displayScale, h: zone.h * displayScale }}
-                zoneKey={zoneKey}
-                photo={photo}
-                preset={presetId}
-                accentColor={accentColor}
-                isSelected={selectedZone === zoneKey}
-                onClick={handleZoneClick}
-                onWheel={e => handleZoneWheel(e, zoneKey)}
-                flipH={photo?.flipH}
-                panX={(slide.zoom?.x?.[zoneKey] || 0) * displayScale}
-                panY={(slide.zoom?.y?.[zoneKey] || 0) * displayScale}
-                photoScale={slide.zoom?.scale?.[zoneKey] || 1}
-                onPan={handleZonePan}
-              />
-            </div>
+              zone={scaledZone}
+              zoneKey={zoneKey}
+              zoneIndex={i}
+              photo={photo}
+              preset={presetId}
+              accentColor={accentColor}
+              isSelected={selectedZone === zoneKey}
+              onClick={handleZoneClick}
+              onWheel={e => handleZoneWheel(e, zoneKey)}
+              flipH={photo?.flipH}
+              panX={(slide.zoom?.x?.[zoneKey] || 0) * displayScale}
+              panY={(slide.zoom?.y?.[zoneKey] || 0) * displayScale}
+              photoScale={slide.zoom?.scale?.[zoneKey] || 1}
+              onPan={handleZonePan}
+              onZoneDragStart={() => {}}
+              onZoneDrop={handleZoneDrop}
+            />
           );
         })}
 
-        {tmpl?.gradient && (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: tmpl.gradient, pointerEvents: 'none' }} />
-        )}
-        {tmpl?.overlay && (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: tmpl.overlay, pointerEvents: 'none' }} />
-        )}
-        {vignette && (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.75) 100%)', pointerEvents: 'none' }} />
-        )}
+        {/* Template overlays */}
+        {tmpl?.gradient && <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: tmpl.gradient, pointerEvents: 'none' }} />}
+        {tmpl?.overlay && <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: tmpl.overlay, pointerEvents: 'none' }} />}
+        {vignette && <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.75) 100%)', pointerEvents: 'none' }} />}
         {innerBorderStyle && <div style={innerBorderStyle} />}
 
+        {/* Text blocks */}
         {(slide.textBlocks || []).map(tb => (
           <TextBlock
-            key={tb.id}
-            tb={tb}
+            key={tb.id} tb={tb}
             isSelected={selectedTextId === tb.id}
             onClick={(id) => { setSelectedTextId(id); setSelectedZone(null); }}
             onUpdate={onUpdateTextBlock}
-            canvasW={dispW}
-            canvasH={dispH}
+            canvasW={dispW} canvasH={dispH}
           />
         ))}
 
+        {/* Logo */}
         {slide.logoSettings?.enabled && logoDataUrl && (
           <LogoOverlay logoDataUrl={logoDataUrl} settings={slide.logoSettings} canvasW={dispW} canvasH={dispH} />
         )}
       </div>
 
+      {/* Export size label */}
       <div style={{
-        position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
-        fontSize: 9, color: '#333', fontFamily: 'DM Mono, monospace', pointerEvents: 'none',
+        position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
+        fontSize: 9, color: '#2A2A2A', fontFamily: 'DM Mono, monospace', pointerEvents: 'none',
       }}>
-        {ratio.exportW}×{ratio.exportH}px export
+        {ratio.exportW}×{ratio.exportH}px
       </div>
     </div>
   );

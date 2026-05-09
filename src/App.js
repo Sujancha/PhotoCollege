@@ -118,6 +118,15 @@ export default function App() {
     setPhotos(p => p.map(ph => ph.id === photoId ? { ...ph, flipH: !ph.flipH } : ph));
   }, [currentSlide]);
 
+  const swapZonePhotos = useCallback((fromZone, toZone) => {
+    const pa = { ...currentSlide.photoAssignments };
+    const fromPhoto = pa[fromZone];
+    const toPhoto = pa[toZone];
+    if (fromPhoto) pa[toZone] = fromPhoto; else delete pa[toZone];
+    if (toPhoto) pa[fromZone] = toPhoto; else delete pa[fromZone];
+    updateCurrentSlide({ photoAssignments: pa });
+  }, [currentSlide, updateCurrentSlide]);
+
   const addTextBlock = useCallback(() => {
     const tb = createDefaultTextBlock(generateId(), accentColor);
     updateCurrentSlide({ textBlocks: [...(currentSlide.textBlocks || []), tb] });
@@ -216,6 +225,7 @@ export default function App() {
           onUpdateTextBlock={updateTextBlock}
           onAssignPhotoToZone={assignPhotoToZone}
           onUpdateZoom={updateZoom}
+          onSwapZones={swapZonePhotos}
           logoDataUrl={brandKit.logoDataUrl || logoDataUrl}
           allPresets={[...WEDDING_PRESETS, ...SPORTS_PRESETS]}
         />
