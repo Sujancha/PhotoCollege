@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { RATIOS, TEMPLATE_CATEGORIES, createDefaultSlide, createDefaultTextBlock, WEDDING_PRESETS, SPORTS_PRESETS, MAX_PHOTOS } from './constants';
-import { generateId, getAccentColor, loadGoogleFont, getTemplate } from './utils';
+import { generateId, getAccentColor, loadGoogleFont, getTemplate, computeZones } from './utils';
 import { useBrandKit } from './hooks/useBrandKit';
 import { useExport } from './hooks/useExport';
 import { loadSavedPhotos, savePhoto, deletePhoto as dbDeletePhoto, updatePhotoFlip } from './hooks/usePhotoStore';
@@ -104,16 +104,12 @@ export default function App() {
     setPhotos(p);
     p.forEach(photo => savePhoto(photo));
 
-    // Auto-assign first N photos to template zones
-    const tmplObj = getTemplate(t, TEMPLATE_CATEGORIES);
-    const assignments = {};
-    (p.slice(0, tmplObj?.slots || 1)).forEach((ph, i) => { assignments[`zone-${i}`] = ph.id; });
-
     setSlides([{
       ...createDefaultSlide(generateId()),
       ratio: r,
       templateId: t,
-      photoAssignments: assignments,
+      photoAssignments: {},
+      zoom: {},
       globalPreset: brandKit.autoApply ? brandKit.defaultPreset : 'natural',
     }]);
     setCurrentSlideIdx(0);
@@ -156,11 +152,35 @@ export default function App() {
   }, [currentSlideIdx]);
 
   const applyTemplate = useCallback((templateId) => {
-    const assignments = {};
-    photos.forEach((p, i) => { assignments[`zone-${i}`] = p.id; });
-    updateCurrentSlide({ templateId, photoAssignments: assignments });
+    const tmplObj = getTemplate(templateId, TEMPLATE_CATEGORIES);
+    const newSlots = tmplObj?.slots || 1;
+    const ratioObj = RATIOS.find(r => r.id === (currentSlide.ratio || currentRatio)) || RATIOS[0];
+    const gutter = currentSlide.borderSettings?.gutter ?? 4;
+    const allZones = tmplObj ? computeZones(tmplObj, ratioObj.w, ratioObj.h, gutter) : [];
+
+    // Keep assignments for zones that still exist; trim any beyond new slot count
+    const currentAssignments = currentSlide.photoAssignments || {};
+    const newAssignments = {};
+    const zoomScale = {};
+    const zoomX = {};
+    const zoomY = {};
+    for (let i = 0; i < newSlots; i++) {
+      const zoneKey = `zone-${i}`;
+      const photoId = currentAssignments[zoneKey];
+      if (photoId) {
+        newAssignments[zoneKey] = photoId;
+        const photo = photos.find(p => p.id === photoId);
+        const zoneObj = allZones[i];
+        if (zoneObj && photo?.w && photo?.h) {
+          zoomScale[zoneKey] = Math.max(zoneObj.w / photo.w, zoneObj.h / photo.h);
+          zoomX[zoneKey] = 0;
+          zoomY[zoneKey] = 0;
+        }
+      }
+    }
+    updateCurrentSlide({ templateId, photoAssignments: newAssignments, zoom: { scale: zoomScale, x: zoomX, y: zoomY } });
     setSelectedZone(null);
-  }, [photos, updateCurrentSlide]);
+  }, [photos, currentSlide, currentRatio, updateCurrentSlide]);
 
   // ── Photo management ─────────────────────────────────────────────────────────
   const handlePhotosAdded = useCallback((newPhotos) => {
@@ -186,13 +206,34 @@ export default function App() {
   }, []);
 
   const assignPhotoToZone = useCallback((zoneKey, photoId) => {
-    updateCurrentSlide({ photoAssignments: { ...currentSlide.photoAssignments, [zoneKey]: photoId } });
-  }, [currentSlide, updateCurrentSlide]);
+    const photo = photos.find(p => p.id === photoId);
+    const tmpl = getTemplate(currentSlide.templateId, TEMPLATE_CATEGORIES);
+    const ratioObj = RATIOS.find(r => r.id === (currentSlide.ratio || currentRatio)) || RATIOS[0];
+    const gutter = currentSlide.borderSettings?.gutter ?? 4;
+    const zoneIdx = parseInt(zoneKey.replace('zone-', ''), 10);
+    const allZones = tmpl ? computeZones(tmpl, ratioObj.w, ratioObj.h, gutter) : [];
+    const zoneObj = allZones[zoneIdx];
+
+    const updates = { photoAssignments: { ...currentSlide.photoAssignments, [zoneKey]: photoId } };
+    if (photo && zoneObj && photo.w && photo.h) {
+      updates.zoom = {
+        ...currentSlide.zoom,
+        scale: { ...currentSlide.zoom?.scale, [zoneKey]: Math.max(zoneObj.w / photo.w, zoneObj.h / photo.h) },
+        x: { ...currentSlide.zoom?.x, [zoneKey]: 0 },
+        y: { ...currentSlide.zoom?.y, [zoneKey]: 0 },
+      };
+    }
+    updateCurrentSlide(updates);
+  }, [currentSlide, photos, currentRatio, updateCurrentSlide]);
 
   const unassignZone = useCallback((zoneKey) => {
     const pa = { ...currentSlide.photoAssignments };
     delete pa[zoneKey];
-    updateCurrentSlide({ photoAssignments: pa });
+    const zoom = { ...currentSlide.zoom };
+    if (zoom.scale) { zoom.scale = { ...zoom.scale }; delete zoom.scale[zoneKey]; }
+    if (zoom.x) { zoom.x = { ...zoom.x }; delete zoom.x[zoneKey]; }
+    if (zoom.y) { zoom.y = { ...zoom.y }; delete zoom.y[zoneKey]; }
+    updateCurrentSlide({ photoAssignments: pa, zoom });
   }, [currentSlide, updateCurrentSlide]);
 
   const flipPhotoInZone = useCallback((zoneKey) => {

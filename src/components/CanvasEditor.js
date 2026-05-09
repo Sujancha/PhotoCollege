@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState, useEffect } from 'react';
+import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { TEMPLATE_CATEGORIES, WEDDING_PRESETS, SPORTS_PRESETS } from '../constants';
 import { getTemplate, computeZones } from '../utils';
 
@@ -6,7 +6,7 @@ const ALL_PRESETS = [...WEDDING_PRESETS, ...SPORTS_PRESETS];
 
 // ─── PHOTO ZONE ──────────────────────────────────────────────────────────────────
 function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accentColor, isSelected,
-  onClick, onZoomDelta, flipH, panX, panY, photoScale, onPan, onZoneDragStart, onZoneDrop }) {
+  onClick, onZoomDelta, flipH, panX, panY, imgCSSW, imgCSSH, onPan, onZoneDragStart, onZoneDrop }) {
 
   const presetObj = ALL_PRESETS.find(p => p.id === preset);
   const filterStr = presetObj?.filter || 'none';
@@ -113,15 +113,21 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accent
             position: 'absolute',
             top: '50%',
             left: '50%',
-            // Cover: auto-fill the zone; scroll to zoom further, drag to reframe
-            minWidth: '100%',
-            minHeight: '100%',
-            width: 'auto',
-            height: 'auto',
+            // Explicit size when we have a stored scale; otherwise fall back to CSS cover
+            ...(imgCSSW != null ? {
+              width: imgCSSW,
+              height: imgCSSH,
+              minWidth: 'unset',
+              minHeight: 'unset',
+            } : {
+              minWidth: '100%',
+              minHeight: '100%',
+              width: 'auto',
+              height: 'auto',
+            }),
             maxWidth: 'none',
             maxHeight: 'none',
-            // Transform: center → pan → zoom → flip
-            transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${photoScale || 1}) ${flipH ? 'scaleX(-1)' : ''}`,
+            transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))${flipH ? ' scaleX(-1)' : ''}`,
             transformOrigin: 'center center',
             filter: filterStr,
             pointerEvents: 'none',
@@ -298,7 +304,7 @@ export default function CanvasEditor({
 
   const tmpl = getTemplate(slide.templateId, TEMPLATE_CATEGORIES);
   const gutter = slide.borderSettings?.gutter ?? 4;
-  const zones = tmpl ? computeZones(tmpl, canvasW, canvasH, gutter) : [];
+  const zones = useMemo(() => tmpl ? computeZones(tmpl, canvasW, canvasH, gutter) : [], [tmpl, canvasW, canvasH, gutter]);
 
   const bgColor = slide.borderSettings?.bgColor || '#000000';
   const vignette = slide.borderSettings?.vignette || tmpl?.vignette;
@@ -317,9 +323,29 @@ export default function CanvasEditor({
 
   // Called from the non-passive wheel listener inside PhotoZone
   const handleZoomDelta = useCallback((zoneKey, deltaY) => {
-    const current = slide.zoom?.scale?.[zoneKey] ?? 1;
-    onUpdateZoom(zoneKey, 'scale', Math.max(0.5, Math.min(5, current - deltaY * 0.002)));
-  }, [slide.zoom, onUpdateZoom]);
+    const current = slide.zoom?.scale?.[zoneKey];
+    if (current == null) return;
+
+    const zoneIdx = parseInt(zoneKey.replace('zone-', ''), 10);
+    const zone = zones[zoneIdx]; // canvas units
+    const photoId = slide.photoAssignments?.[zoneKey];
+    const photo = photos.find(p => p.id === photoId);
+
+    // Dynamic bounds based on photo and zone dimensions
+    let minScale, maxScale;
+    if (zone && photo?.w && photo?.h) {
+      const coverScale = Math.max(zone.w / photo.w, zone.h / photo.h);
+      const containScale = Math.min(zone.w / photo.w, zone.h / photo.h);
+      minScale = containScale * 0.4; // zoom out past contain — see full image + breathing room
+      maxScale = coverScale * 8;
+    } else {
+      minScale = 0.01;
+      maxScale = 20;
+    }
+
+    const newScale = Math.max(minScale, Math.min(maxScale, current * Math.exp(-deltaY * 0.003)));
+    onUpdateZoom(zoneKey, 'scale', newScale);
+  }, [slide.zoom, slide.photoAssignments, zones, photos, onUpdateZoom]);
 
   const handleZonePan = useCallback((zoneKey, newPanX, newPanY) => {
     const s = displayScaleRef.current || 1;
@@ -401,6 +427,15 @@ export default function CanvasEditor({
             x: zone.x * displayScale, y: zone.y * displayScale,
             w: zone.w * displayScale, h: zone.h * displayScale,
           };
+
+          // Compute explicit CSS image size from stored canvas-unit scale
+          const storedScale = slide.zoom?.scale?.[zoneKey];
+          let imgCSSW = null, imgCSSH = null;
+          if (photo?.w && photo?.h && storedScale != null) {
+            imgCSSW = photo.w * storedScale * displayScale;
+            imgCSSH = photo.h * storedScale * displayScale;
+          }
+
           return (
             <PhotoZone
               key={zoneKey}
@@ -417,7 +452,8 @@ export default function CanvasEditor({
               flipH={photo?.flipH}
               panX={(slide.zoom?.x?.[zoneKey] || 0) * displayScale}
               panY={(slide.zoom?.y?.[zoneKey] || 0) * displayScale}
-              photoScale={slide.zoom?.scale?.[zoneKey] || 1}
+              imgCSSW={imgCSSW}
+              imgCSSH={imgCSSH}
               onPan={handleZonePan}
               onZoneDragStart={() => {}}
               onZoneDrop={handleZoneDrop}

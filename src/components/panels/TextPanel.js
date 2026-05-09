@@ -1,18 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Trash2, ChevronDown, ChevronRight, Bold, Italic, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
-import { FONT_BUCKETS, TEXT_COLOR_PRESETS, TEXT_PRESETS, TEMPLATE_CATEGORIES } from '../../constants';
-import { loadGoogleFont, computeZones } from '../../utils';
-
-function MiniZonePreview({ tmpl, w = 44, h = 44 }) {
-  const zones = tmpl?.zones ? computeZones(tmpl, w, h, 2) : [];
-  return (
-    <div style={{ width: w, height: h, background: '#0A0A0A', position: 'relative', overflow: 'hidden', borderRadius: 2, flexShrink: 0 }}>
-      {zones.map((z, i) => (
-        <div key={i} style={{ position: 'absolute', left: z.x, top: z.y, width: z.w, height: z.h, background: '#2A2A2A', borderRadius: 1 }} />
-      ))}
-    </div>
-  );
-}
+import { FONT_BUCKETS, TEXT_COLOR_PRESETS, TEXT_PRESETS } from '../../constants';
+import { loadGoogleFont } from '../../utils';
 
 const GRADIENT_PRESETS = [
   { label: 'Gold',   angle: 135, stops: ['#C9A96E', '#F5E6C8', '#C9A96E'] },
@@ -23,6 +12,17 @@ const GRADIENT_PRESETS = [
   { label: 'Ocean',  angle: 135, stops: ['#00A8FF', '#0050FF'] },
   { label: 'Silver', angle: 180, stops: ['#FFFFFF', '#888888'] },
   { label: 'Dawn',   angle: 135, stops: ['#FF9A9E', '#FAD0C4', '#FFD1FF'] },
+];
+
+const BG_OPTIONS = [
+  { id: 'none',    label: 'None',     bgPill: false, bgColor: null,                    preview: 'transparent',          border: true },
+  { id: 'dark50',  label: 'Dark 50%', bgPill: true,  bgColor: 'rgba(0,0,0,0.5)',        preview: 'rgba(0,0,0,0.5)'        },
+  { id: 'dark80',  label: 'Dark 80%', bgPill: true,  bgColor: 'rgba(0,0,0,0.8)',        preview: 'rgba(0,0,0,0.8)'        },
+  { id: 'light20', label: 'Light 20%',bgPill: true,  bgColor: 'rgba(255,255,255,0.2)',  preview: 'rgba(255,255,255,0.2)'  },
+  { id: 'light70', label: 'Light 70%',bgPill: true,  bgColor: 'rgba(255,255,255,0.7)',  preview: 'rgba(255,255,255,0.7)'  },
+  { id: 'black',   label: 'Black',    bgPill: true,  bgColor: '#000000',                preview: '#000000'                },
+  { id: 'white',   label: 'White',    bgPill: true,  bgColor: '#FFFFFF',                preview: '#FFFFFF'                },
+  { id: 'gold',    label: 'Gold',     bgPill: true,  bgColor: '#C9A96E',                preview: '#C9A96E'                },
 ];
 
 function Label({ children }) {
@@ -73,11 +73,41 @@ function Slider({ label, value, min, max, step = 1, onChange, unit = '' }) {
   );
 }
 
-export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpdate, onDelete, onApplyQuickStyle, onAddWithStyle, onApplyTemplate, currentTemplateId, accentColor }) {
+function BgPresets({ activeBgId, activeBgColor, onSelect, onCustomColor, accentColor, isCustomActive }) {
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 6 }}>
+        {BG_OPTIONS.map(bg => {
+          const isActive = activeBgId === bg.id;
+          return (
+            <button key={bg.id} onClick={() => onSelect(bg)} title={bg.label}
+              style={{ padding: '5px 4px', background: isActive ? '#1E1E1E' : '#111', border: `1px solid ${isActive ? accentColor : '#222'}`, borderRadius: 2, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}
+            >
+              <div style={{ width: 28, height: 16, background: bg.preview, border: `1px solid ${bg.border ? '#444' : '#2A2A2A'}`, borderRadius: 2, flexShrink: 0 }} />
+              <span style={{ fontSize: 6, color: isActive ? accentColor : '#444', fontFamily: 'DM Sans', lineHeight: 1.1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '100%' }}>{bg.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 8, color: '#555', fontFamily: 'DM Sans' }}>Custom</span>
+        <input type="color"
+          value={activeBgColor && activeBgColor.startsWith('#') ? activeBgColor : '#000000'}
+          onChange={e => onCustomColor(e.target.value)}
+          style={{ width: 24, height: 20, padding: 0, border: `1px solid ${isCustomActive ? accentColor : '#2A2A2A'}`, cursor: 'pointer', background: 'transparent', borderRadius: 2 }}
+        />
+        {isCustomActive && <span style={{ fontSize: 7, color: accentColor, fontFamily: 'DM Sans' }}>Custom active</span>}
+      </div>
+    </>
+  );
+}
+
+export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpdate, onDelete, onApplyQuickStyle, onAddWithStyle, accentColor }) {
   const [showFonts, setShowFonts] = useState(false);
   const [expandedBucket, setExpandedBucket] = useState(null);
   const [presetFilter, setPresetFilter] = useState('all');
-
+  const [pendingBgId, setPendingBgId] = useState('none');
+  const [pendingBgColor, setPendingBgColor] = useState('#000000');
 
   const orderedBuckets = [...FONT_BUCKETS].sort((a, b) => {
     if (mode === 'sports') {
@@ -99,8 +129,33 @@ export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpda
 
   const handlePreset = (preset) => {
     loadGoogleFont(preset.style.font);
-    if (tb) onApplyQuickStyle(preset.style);
-    else onAddWithStyle(preset.style);
+    if (tb) {
+      onApplyQuickStyle(preset.style);
+    } else {
+      const bgOpt = BG_OPTIONS.find(b => b.id === pendingBgId);
+      const isCustom = pendingBgId === 'custom';
+      const bgStyle = (bgOpt && bgOpt.id !== 'none')
+        ? { bgPill: true, bgColor: bgOpt.bgColor }
+        : isCustom
+          ? { bgPill: true, bgColor: pendingBgColor }
+          : { bgPill: false };
+      onAddWithStyle({ ...preset.style, ...bgStyle });
+    }
+  };
+
+  // Determine active bg state for selected text block
+  const getActiveBgId = () => {
+    if (!tb || !tb.bgPill) return 'none';
+    const match = BG_OPTIONS.find(b => b.id !== 'none' && b.bgColor === tb.bgColor);
+    return match ? match.id : 'custom';
+  };
+
+  const handleTbBgSelect = (bg) => {
+    if (bg.id === 'none') {
+      onUpdate(tb.id, { bgPill: false });
+    } else {
+      onUpdate(tb.id, { bgPill: true, bgColor: bg.bgColor });
+    }
   };
 
   return (
@@ -157,41 +212,28 @@ export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpda
         </div>
       </div>
 
-      {/* ── No text selected — show template picker ─── */}
+      {/* ── No text selected ─────────────────────────────── */}
       {!tb ? (
-        <div style={{ padding: '10px 10px 0' }}>
-          <div style={{ fontSize: 9, color: '#3A3A3A', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5, marginBottom: 10 }}>
-            Select a text block to edit, or click <strong style={{ color: '#555' }}>Add Text</strong> in the top bar.
+        <div style={{ padding: '10px' }}>
+          <div style={{ fontSize: 9, color: '#3A3A3A', fontFamily: 'DM Sans', lineHeight: 1.5, marginBottom: 12 }}>
+            Select a text block to edit, or use the presets above to add text.
           </div>
-          <Label>Layout Templates</Label>
-          <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 280px)' }}>
-            {TEMPLATE_CATEGORIES.map(cat => (
-              <div key={cat.id} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 8, color: '#444', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>{cat.label}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
-                  {cat.templates.map(tmpl => {
-                    const active = currentTemplateId === tmpl.id;
-                    return (
-                      <button key={tmpl.id} onClick={() => onApplyTemplate?.(tmpl.id)}
-                        style={{ padding: 6, background: active ? '#1E1E1E' : '#111', border: `1px solid ${active ? accentColor : '#222'}`, borderRadius: 2, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'border-color 120ms' }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = active ? accentColor : accentColor + '55'}
-                        onMouseLeave={e => e.currentTarget.style.borderColor = active ? accentColor : '#222'}
-                      >
-                        <MiniZonePreview tmpl={tmpl} />
-                        <span style={{ fontSize: 7, color: active ? accentColor : '#555', textAlign: 'center', lineHeight: 1.2, fontFamily: 'DM Sans, sans-serif' }}>
-                          {tmpl.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+
+          <Label>Text Background</Label>
+          <div style={{ fontSize: 8, color: '#3A3A3A', fontFamily: 'DM Sans', marginBottom: 8 }}>
+            Choose a background — applied when adding text via presets above
           </div>
+          <BgPresets
+            activeBgId={pendingBgId}
+            activeBgColor={pendingBgColor}
+            isCustomActive={pendingBgId === 'custom'}
+            onSelect={bg => setPendingBgId(bg.id)}
+            onCustomColor={c => { setPendingBgId('custom'); setPendingBgColor(c); }}
+            accentColor={accentColor}
+          />
         </div>
       ) : (
         <div style={{ padding: '10px' }}>
-
 
           {/* Font */}
           <div style={{ marginBottom: 10 }}>
@@ -240,7 +282,7 @@ export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpda
             )}
           </div>
 
-          {/* Style toggles — all in one row */}
+          {/* Style toggles */}
           <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
             <button onClick={() => upd('bold', !tb.bold)}
               style={{ flex: 1, padding: '5px 0', background: tb.bold ? accentColor : '#111', border: `1px solid ${tb.bold ? accentColor : '#2A2A2A'}`, color: tb.bold ? '#000' : '#888', cursor: 'pointer', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -353,25 +395,15 @@ export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpda
 
           {/* Text Background */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <Label>Text Background</Label>
-              <Toggle value={!!tb.bgPill} onChange={v => upd('bgPill', v)} accentColor={accentColor} />
-            </div>
-            {tb.bgPill && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 9, color: '#555', fontFamily: 'DM Sans' }}>Color</span>
-                <input type="color"
-                  value={tb.bgColor && !tb.bgColor.startsWith('rgba') ? tb.bgColor : '#000000'}
-                  onChange={e => upd('bgColor', e.target.value)}
-                  style={{ width: 24, height: 20, padding: 0, border: '1px solid #2A2A2A', cursor: 'pointer', background: 'transparent', borderRadius: 2 }}
-                />
-                {['rgba(0,0,0,0.5)', 'rgba(255,255,255,0.15)', '#000000', '#FFFFFF', '#C9A96E', '#00A8FF'].map(c => (
-                  <button key={c} onClick={() => upd('bgColor', c)} title={c}
-                    style={{ width: 18, height: 18, background: c, border: `1px solid ${tb.bgColor === c ? accentColor : '#333'}`, cursor: 'pointer', borderRadius: 2, flexShrink: 0 }}
-                  />
-                ))}
-              </div>
-            )}
+            <Label>Text Background</Label>
+            <BgPresets
+              activeBgId={getActiveBgId()}
+              activeBgColor={tb.bgColor || '#000000'}
+              isCustomActive={getActiveBgId() === 'custom'}
+              onSelect={handleTbBgSelect}
+              onCustomColor={c => onUpdate(tb.id, { bgPill: true, bgColor: c })}
+              accentColor={accentColor}
+            />
           </div>
 
           {/* Delete */}
