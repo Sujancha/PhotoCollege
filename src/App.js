@@ -322,6 +322,15 @@ export default function App() {
     updateCurrentSlide({ zoom });
   }, [currentSlide, updateCurrentSlide]);
 
+  // Update x and y pan in one atomic write — avoids stale closure bug where
+  // two separate updateZoom calls would have the second overwrite the first.
+  const updateZoomPan = useCallback((zoneKey, x, y) => {
+    const zoom = { ...currentSlide.zoom };
+    zoom.x = { ...zoom.x, [zoneKey]: x };
+    zoom.y = { ...zoom.y, [zoneKey]: y };
+    updateCurrentSlide({ zoom });
+  }, [currentSlide, updateCurrentSlide]);
+
   const presets = mode === 'wedding' ? WEDDING_PRESETS : SPORTS_PRESETS;
   const selectedTextBlock = (currentSlide.textBlocks || []).find(t => t.id === selectedTextId);
 
@@ -370,6 +379,7 @@ export default function App() {
             onUpdateTextBlock={updateTextBlock}
             onAssignPhotoToZone={assignPhotoToZone}
             onUpdateZoom={updateZoom}
+            onUpdateZoomPan={updateZoomPan}
             onSwapZones={swapZonePhotos}
             logoDataUrl={brandKit.logoDataUrl || logoDataUrl}
             allPresets={[...WEDDING_PRESETS, ...SPORTS_PRESETS]}

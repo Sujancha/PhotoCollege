@@ -292,7 +292,7 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
 export default function CanvasEditor({
   slide, ratio, photos, mode, accentColor,
   selectedZone, setSelectedZone, selectedTextId, setSelectedTextId,
-  onUpdateTextBlock, onAssignPhotoToZone, onUpdateZoom, onSwapZones,
+  onUpdateTextBlock, onAssignPhotoToZone, onUpdateZoom, onUpdateZoomPan, onSwapZones,
   logoDataUrl,
 }) {
   const containerRef = useRef();
@@ -349,9 +349,8 @@ export default function CanvasEditor({
 
   const handleZonePan = useCallback((zoneKey, newPanX, newPanY) => {
     const s = displayScaleRef.current || 1;
-    onUpdateZoom(zoneKey, 'x', newPanX / s);
-    onUpdateZoom(zoneKey, 'y', newPanY / s);
-  }, [onUpdateZoom]);
+    onUpdateZoomPan(zoneKey, newPanX / s, newPanY / s);
+  }, [onUpdateZoomPan]);
 
   // Drop handler — handles both library→zone and zone→zone (swap)
   const handleZoneDrop = useCallback((e, toZone) => {
