@@ -34,6 +34,7 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, preset
 
   const draggingPhoto = useRef(false);
   const dragStart = useRef(null);
+  const touchMovedRef = useRef(false);
   const [dropOver, setDropOver] = useState(false);
   const [isDraggingOut, setIsDraggingOut] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -71,12 +72,14 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, preset
     let touchPanStart = null;
 
     const handleTouchStart = (e) => {
+      touchMovedRef.current = false;
       if (e.touches.length === 2) {
         lastPinchDist = getTouchDist(e.touches);
         touchPanStart = null;
       } else if (e.touches.length === 1) {
-        const { isSelected: sel, hasPhoto, panX: px, panY: py } = touchStateRef.current;
-        if (sel && hasPhoto) {
+        // Capture pan start for any zone that has a photo — no isSelected requirement
+        const { hasPhoto, panX: px, panY: py } = touchStateRef.current;
+        if (hasPhoto) {
           touchPanStart = { tx: e.touches[0].clientX, ty: e.touches[0].clientY, px, py };
         }
       }
@@ -89,17 +92,23 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, preset
         const delta = -(newDist - lastPinchDist) * 1.5;
         onZoomDeltaRef.current(zoneKey, delta);
         lastPinchDist = newDist;
+        touchMovedRef.current = true;
       } else if (e.touches.length === 1 && touchPanStart) {
-        e.preventDefault();
         const dx = e.touches[0].clientX - touchPanStart.tx;
         const dy = e.touches[0].clientY - touchPanStart.ty;
-        onPanRef.current(zoneKey, touchPanStart.px + dx, touchPanStart.py + dy);
+        // Only treat as pan if finger moved enough — prevents suppressing a real tap
+        if (Math.hypot(dx, dy) > 8) {
+          e.preventDefault();
+          touchMovedRef.current = true;
+          onPanRef.current(zoneKey, touchPanStart.px + dx, touchPanStart.py + dy);
+        }
       }
     };
 
     const handleTouchEnd = () => {
       lastPinchDist = null;
       touchPanStart = null;
+      // touchMovedRef stays true until handleMouseDown consumes it
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
@@ -117,6 +126,8 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, preset
   // Mouse drag to pan (only when zone already selected)
   const handleMouseDown = useCallback((e) => {
     if (e.button !== 0) return;
+    // Suppress click that fires after a touch-drag (pan gesture already handled)
+    if (touchMovedRef.current) { touchMovedRef.current = false; return; }
 
     if (!isSelected) {
       onClick(zoneKey);

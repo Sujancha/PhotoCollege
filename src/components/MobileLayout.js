@@ -209,6 +209,7 @@ export default function MobileLayout({
   const [showZonePicker, setShowZonePicker] = useState(false);
   const [exportFormat, setExportFormat] = useState('jpg');
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const drawerHandleY = useRef(null);
 
   // Explicitly compute canvas area height to work around iOS Safari flex height bug
   // Fixed chrome: topBar(48+34+1) + slideNav(68+1) + tabBar(56+1) = 209px
@@ -252,8 +253,8 @@ export default function MobileLayout({
 
   const closeZonePicker = useCallback(() => {
     setShowZonePicker(false);
-    setSelectedZone(null);
-  }, [setSelectedZone]);
+    // Keep zone selected so the user can immediately pan/zoom after assigning a photo
+  }, []);
 
   const openTab = (tabId) => {
     if (activeTab === tabId && panelOpen) {
@@ -397,8 +398,19 @@ export default function MobileLayout({
         background: '#1A1A1A',
         borderTop: panelOpen ? '1px solid #2A2A2A' : 'none',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 2px' }}>
-          <div style={{ width: 32, height: 3, background: '#333', borderRadius: 2 }} />
+        {/* Tap or swipe-down the handle to dismiss the drawer */}
+        <div
+          onClick={() => setPanelOpen(false)}
+          onTouchStart={(e) => { drawerHandleY.current = e.touches[0].clientY; }}
+          onTouchEnd={(e) => {
+            if (drawerHandleY.current !== null) {
+              if (e.changedTouches[0].clientY - drawerHandleY.current > 20) setPanelOpen(false);
+              drawerHandleY.current = null;
+            }
+          }}
+          style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'pointer' }}
+        >
+          <div style={{ width: 36, height: 4, background: '#444', borderRadius: 2 }} />
         </div>
         <div style={{ height: 'calc(100% - 14px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {activeTab === 'templates' && (
