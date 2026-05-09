@@ -216,23 +216,15 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
 
 async function blobToDownload(canvas, suggestedName, format) {
   const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-  const ext = format === 'png' ? 'png' : 'jpg';
   const blob = await new Promise(res => canvas.toBlob(res, mimeType, 1.0));
 
-  // Use native Save dialog if supported (Chrome / Edge)
+  // 1. Desktop: native OS save dialog (Chrome / Edge)
   if (window.showSaveFilePicker) {
     const jpgType = { description: 'JPEG Image', accept: { 'image/jpeg': ['.jpg', '.jpeg'] } };
     const pngType = { description: 'PNG Image',  accept: { 'image/png':  ['.png'] } };
-    // Put the chosen format first so it's pre-selected in the dialog
     const types = format === 'png' ? [pngType, jpgType] : [jpgType, pngType];
-    const handle = await window.showSaveFilePicker({
-      suggestedName,
-      types,
-      startIn: 'pictures',
-    });
-    // Detect what type the user actually chose from the dialog
-    const chosenName = handle.name || suggestedName;
-    const chosenExt  = chosenName.split('.').pop().toLowerCase();
+    const handle = await window.showSaveFilePicker({ suggestedName, types, startIn: 'pictures' });
+    const chosenExt  = (handle.name || suggestedName).split('.').pop().toLowerCase();
     const finalMime  = chosenExt === 'png' ? 'image/png' : 'image/jpeg';
     const finalBlob  = finalMime !== mimeType
       ? await new Promise(res => canvas.toBlob(res, finalMime, 1.0))
@@ -240,15 +232,24 @@ async function blobToDownload(canvas, suggestedName, format) {
     const writable = await handle.createWritable();
     await writable.write(finalBlob);
     await writable.close();
-  } else {
-    // Fallback for browsers without File System Access API
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${suggestedName}.${ext}`;
-    a.click();
-    URL.revokeObjectURL(url);
+    return;
   }
+
+  // 2. Mobile (iOS Safari / Android): Web Share API — shows native share sheet
+  //    On iOS the user can tap "Save Image" to send directly to Photos gallery.
+  const file = new File([blob], suggestedName, { type: mimeType });
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], title: suggestedName });
+    return;
+  }
+
+  // 3. Final fallback: force download via <a> (goes to Files on iOS)
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = suggestedName;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function useExport(slides, photos, logoDataUrl, currentRatio) {
@@ -266,7 +267,7 @@ export function useExport(slides, photos, logoDataUrl, currentRatio) {
       const name = slideIdx >= 0 ? `slide-${String(slideIdx + 1).padStart(2, '0')}.${ext}` : `slide.${ext}`;
       await blobToDownload(canvas, name, format);
     } catch (e) {
-      if (e?.name !== 'AbortError') {
+      if (e?.name !== 'AbortError' && e?.message !== 'Share canceled') {
         console.error(e);
         setExportProgress('Export failed. Please try again.');
         setTimeout(() => setExportProgress(''), 3000);
