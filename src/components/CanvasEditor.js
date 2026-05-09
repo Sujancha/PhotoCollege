@@ -380,16 +380,20 @@ export default function CanvasEditor({
   useEffect(() => {
     const measure = () => {
       if (!wrapRef.current) return;
-      const { clientWidth: cw, clientHeight: ch } = wrapRef.current;
-      const pad = 60;
+      const cw = wrapRef.current.clientWidth || wrapRef.current.offsetWidth || window.innerWidth;
+      const ch = wrapRef.current.clientHeight || wrapRef.current.offsetHeight;
+      if (!cw || !ch) return; // skip bad measurements — ResizeObserver will fire again
+      const pad = 40;
       const s = Math.min((cw - pad) / canvasW, (ch - pad) / canvasH, 1);
       displayScaleRef.current = s;
       setDisplayScale(s);
     };
     measure();
+    // Retry after layout settles — needed on iOS Safari where initial clientHeight may be 0
+    const t = setTimeout(measure, 100);
     const ro = new ResizeObserver(measure);
     if (wrapRef.current) ro.observe(wrapRef.current);
-    return () => ro.disconnect();
+    return () => { clearTimeout(t); ro.disconnect(); };
   }, [canvasW, canvasH]);
 
   const dispW = Math.round(canvasW * displayScale);

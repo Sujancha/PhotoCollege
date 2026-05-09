@@ -3,9 +3,9 @@ import { Plus, Copy, Trash2 } from 'lucide-react';
 import { TEMPLATE_CATEGORIES } from '../constants';
 import { getTemplate, computeZones } from '../utils';
 
-function SlideMiniPreview({ slide, photos, ratio, accentColor, isActive, onClick, idx }) {
+function SlideMiniPreview({ slide, photos, ratio, accentColor, isActive, onClick, idx, compact }) {
   const tmpl = getTemplate(slide.templateId, TEMPLATE_CATEGORIES);
-  const previewW = 60;
+  const previewW = compact ? 40 : 60;
   const previewH = Math.round(previewW * (ratio.h / ratio.w));
 
   return (
@@ -72,13 +72,13 @@ function SlideMiniPreview({ slide, photos, ratio, accentColor, isActive, onClick
 }
 
 export default function SlideNavigator({
-  slides, currentIdx, photos, accentColor, onSelect, onAdd, onRemove, onDuplicate, ratio
+  slides, currentIdx, photos, accentColor, onSelect, onAdd, onRemove, onDuplicate, ratio, compact
 }) {
   return (
     <div
       className="flex items-center flex-shrink-0 overflow-x-auto"
       style={{
-        height: 90,
+        height: compact ? 68 : 90,
         background: '#111111',
         borderTop: '1px solid #222',
         paddingLeft: 8,
@@ -96,6 +96,7 @@ export default function SlideNavigator({
           isActive={i === currentIdx}
           onClick={() => onSelect(i)}
           idx={i}
+          compact={compact}
         />
       ))}
 

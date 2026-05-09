@@ -243,7 +243,7 @@ export default function MobileLayout({
   };
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#0F0F0F', overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#0F0F0F', overflow: 'hidden' }}>
 
       {/* ── Top Bar ─────────────────────────────────────────────────────── */}
       <div style={{ background: '#141414', borderBottom: '1px solid #2A2A2A', flexShrink: 0 }}>
@@ -323,7 +323,7 @@ export default function MobileLayout({
       </div>
 
       {/* ── Canvas ──────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ flex: '1 1 0', overflow: 'hidden', minHeight: 0 }}>
         <CanvasEditor
           slide={currentSlide}
           ratio={ratio}
@@ -355,6 +355,7 @@ export default function MobileLayout({
           onRemove={removeSlide}
           onDuplicate={duplicateSlide}
           ratio={ratio}
+          compact
         />
       </div>
 
