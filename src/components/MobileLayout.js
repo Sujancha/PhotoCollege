@@ -224,6 +224,20 @@ export default function MobileLayout({
     return () => window.removeEventListener('resize', compute);
   }, [panelOpen]);
 
+  // Prevent iOS Safari browser-level pinch zoom (user-scalable=no is ignored on iOS 10+)
+  useEffect(() => {
+    const preventMultiTouch = (e) => { if (e.touches.length > 1) e.preventDefault(); };
+    const preventGesture = (e) => e.preventDefault();
+    document.addEventListener('touchmove', preventMultiTouch, { passive: false });
+    document.addEventListener('gesturestart', preventGesture, { passive: false });
+    document.addEventListener('gesturechange', preventGesture, { passive: false });
+    return () => {
+      document.removeEventListener('touchmove', preventMultiTouch);
+      document.removeEventListener('gesturestart', preventGesture);
+      document.removeEventListener('gesturechange', preventGesture);
+    };
+  }, []);
+
   // When a canvas zone is tapped, show the photo picker sheet
   const handleZoneSelect = useCallback((zoneKey) => {
     setSelectedZone(zoneKey);

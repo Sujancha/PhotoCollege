@@ -101,7 +101,7 @@ export default function SlideNavigator({
       ))}
 
       {/* Controls */}
-      <div className="flex flex-col gap-1 px-2 flex-shrink-0">
+      <div className="flex flex-row gap-1 px-2 flex-shrink-0">
         <button
           onClick={onAdd}
           title="Add Slide"
