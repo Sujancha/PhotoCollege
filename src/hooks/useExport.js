@@ -214,20 +214,41 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
   return canvas;
 }
 
-function blobToDownload(canvas, filename, format) {
+async function blobToDownload(canvas, suggestedName, format) {
   const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-  const quality = 1.0; // always maximum quality
-  return new Promise(res => {
-    canvas.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      res();
-    }, mimeType, quality);
-  });
+  const ext = format === 'png' ? 'png' : 'jpg';
+  const blob = await new Promise(res => canvas.toBlob(res, mimeType, 1.0));
+
+  // Use native Save dialog if supported (Chrome / Edge)
+  if (window.showSaveFilePicker) {
+    const jpgType = { description: 'JPEG Image', accept: { 'image/jpeg': ['.jpg', '.jpeg'] } };
+    const pngType = { description: 'PNG Image',  accept: { 'image/png':  ['.png'] } };
+    // Put the chosen format first so it's pre-selected in the dialog
+    const types = format === 'png' ? [pngType, jpgType] : [jpgType, pngType];
+    const handle = await window.showSaveFilePicker({
+      suggestedName,
+      types,
+      startIn: 'pictures',
+    });
+    // Detect what type the user actually chose from the dialog
+    const chosenName = handle.name || suggestedName;
+    const chosenExt  = chosenName.split('.').pop().toLowerCase();
+    const finalMime  = chosenExt === 'png' ? 'image/png' : 'image/jpeg';
+    const finalBlob  = finalMime !== mimeType
+      ? await new Promise(res => canvas.toBlob(res, finalMime, 1.0))
+      : blob;
+    const writable = await handle.createWritable();
+    await writable.write(finalBlob);
+    await writable.close();
+  } else {
+    // Fallback for browsers without File System Access API
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${suggestedName}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function useExport(slides, photos, logoDataUrl, currentRatio) {
@@ -241,16 +262,20 @@ export function useExport(slides, photos, logoDataUrl, currentRatio) {
       await loadAllFontsForExport([...new Set(slide.textBlocks?.map(t => t.font) || [])]);
       const canvas = await renderSlideToCanvas(slide, photos, logoDataUrl, slide.ratio || currentRatio);
       const ext = format === 'png' ? 'png' : 'jpg';
-      await blobToDownload(canvas, `slide.${ext}`, format);
+      const slideIdx = slides.findIndex(s => s.id === slide.id);
+      const name = slideIdx >= 0 ? `slide-${String(slideIdx + 1).padStart(2, '0')}.${ext}` : `slide.${ext}`;
+      await blobToDownload(canvas, name, format);
     } catch (e) {
-      console.error(e);
-      setExportProgress('Export failed. Please try again.');
-      setTimeout(() => setExportProgress(''), 3000);
+      if (e?.name !== 'AbortError') {
+        console.error(e);
+        setExportProgress('Export failed. Please try again.');
+        setTimeout(() => setExportProgress(''), 3000);
+      }
     } finally {
       setExporting(false);
       setExportProgress('');
     }
-  }, [photos, logoDataUrl, currentRatio]);
+  }, [slides, photos, logoDataUrl, currentRatio]);
 
   const exportAllSlides = useCallback(async (format = 'jpg') => {
     setExporting(true);
@@ -271,16 +296,30 @@ export function useExport(slides, photos, logoDataUrl, currentRatio) {
 
       setExportProgress('Packaging ZIP…');
       const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `carousel-slides.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
+
+      if (window.showSaveFilePicker) {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: 'carousel-slides.zip',
+          types: [{ description: 'ZIP Archive', accept: { 'application/zip': ['.zip'] } }],
+          startIn: 'pictures',
+        });
+        const writable = await handle.createWritable();
+        await writable.write(zipBlob);
+        await writable.close();
+      } else {
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'carousel-slides.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     } catch (e) {
-      console.error(e);
-      setExportProgress('Export failed. Try fewer slides.');
-      setTimeout(() => setExportProgress(''), 3000);
+      if (e?.name !== 'AbortError') {
+        console.error(e);
+        setExportProgress('Export failed. Try fewer slides.');
+        setTimeout(() => setExportProgress(''), 3000);
+      }
     } finally {
       setExporting(false);
       setTimeout(() => setExportProgress(''), 1000);
@@ -297,7 +336,7 @@ export function useExport(slides, photos, logoDataUrl, currentRatio) {
       const ext = format === 'png' ? 'png' : 'jpg';
       await blobToDownload(canvas, `tiktok-slide.${ext}`, format);
     } catch (e) {
-      console.error(e);
+      if (e?.name !== 'AbortError') console.error(e);
     } finally {
       setExporting(false);
       setExportProgress('');

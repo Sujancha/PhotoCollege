@@ -350,7 +350,7 @@ export default function App() {
         currentRatio={displayRatio}
         setCurrentRatio={(r) => { setCurrentRatio(r); updateCurrentSlide({ ratio: r }); }}
         accentColor={accentColor}
-        onExportCurrent={() => exportCurrentSlide(currentSlide)}
+        onExportCurrent={(fmt) => exportCurrentSlide(currentSlide, fmt)}
         onExportAll={exportAllSlides}
         onExportTikTok={(fmt) => exportTikTok(currentSlide, fmt)}
         exporting={exporting}

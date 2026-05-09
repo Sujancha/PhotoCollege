@@ -465,6 +465,13 @@ export const WEDDING_PRESETS = [
   { id: 'hc-bw',            label: 'Hi-Con B&W',       vibe: 'Bold contrast & drama',     filter: 'grayscale(1) contrast(1.4) brightness(0.95)' },
   { id: 'soft-bw',          label: 'Soft B&W',         vibe: 'Gentle & nostalgic',        filter: 'grayscale(1) contrast(0.9) brightness(1.1)' },
   { id: 'selenium',         label: 'Selenium',         vibe: 'Fine art darkroom',         filter: 'grayscale(1) contrast(1.1) brightness(1.02) sepia(0.18)' },
+
+  // ── New Popular Looks ──
+  { id: 'matte-fade',       label: 'Matte Fade',       vibe: 'Flat & modern — VSCO-inspired', filter: 'brightness(1.12) contrast(0.72) saturate(0.88)' },
+  { id: 'lomo-chrome',      label: 'Lomo Chrome',      vibe: 'Vivid cross-processed film',    filter: 'hue-rotate(15deg) saturate(1.65) contrast(1.28) brightness(0.97)' },
+  { id: 'autumn-ember',     label: 'Autumn Ember',     vibe: 'Rich amber & rust tones',       filter: 'sepia(0.35) saturate(1.45) hue-rotate(-18deg) brightness(1.06) contrast(1.08)' },
+  { id: 'dusty-lavender',   label: 'Dusty Lavender',   vibe: 'Misty lilac & romantic',        filter: 'hue-rotate(282deg) saturate(0.68) brightness(1.12) contrast(0.88)' },
+  { id: 'faded-teal',       label: 'Faded Teal',       vibe: 'Moody editorial teal fade',     filter: 'hue-rotate(175deg) saturate(0.62) brightness(1.15) contrast(0.85)' },
 ];
 
 export const SPORTS_PRESETS = [
@@ -496,6 +503,13 @@ export const SPORTS_PRESETS = [
   { id: 'bw-impact',        label: 'B&W Impact',       vibe: 'Powerful & newspaper press',filter: 'grayscale(1) contrast(1.5) brightness(0.9)' },
   { id: 'bw-dramatic',      label: 'B&W Dramatic',     vibe: 'Classic sports photography',filter: 'grayscale(1) contrast(1.6) brightness(0.85) sepia(0.05)' },
   { id: 'bw-clean-sport',   label: 'B&W Clean',        vibe: 'Crisp editorial B&W',       filter: 'grayscale(1) contrast(1.2) brightness(1.05)' },
+
+  // ── New Popular Looks ──
+  { id: 'cross-process',    label: 'Cross Process',    vibe: 'Psychedelic film cross',        filter: 'hue-rotate(22deg) saturate(1.8) contrast(1.3) brightness(0.94)' },
+  { id: 'hyper-vivid',      label: 'Hyper Vivid',      vibe: 'Max saturation & pop',          filter: 'saturate(1.95) contrast(1.25) brightness(1.05)' },
+  { id: 'purple-haze',      label: 'Purple Haze',      vibe: 'Violet & electric atmosphere',  filter: 'hue-rotate(258deg) saturate(1.12) brightness(1.06) contrast(1.15)' },
+  { id: 'amber-strike',     label: 'Amber Strike',     vibe: 'Aggressive warm & punchy',      filter: 'sepia(0.28) saturate(1.55) hue-rotate(-22deg) brightness(1.08) contrast(1.22)' },
+  { id: 'infrared',         label: 'Infrared',         vibe: 'Surreal shifted spectrum',      filter: 'hue-rotate(100deg) saturate(1.35) contrast(1.15) brightness(1.02)' },
 ];
 
 // ─── FONTS ──────────────────────────────────────────────────────────────────────
