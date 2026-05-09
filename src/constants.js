@@ -353,29 +353,72 @@ export const TEMPLATE_CATEGORIES = [
 
 // ─── COLOR PRESETS ──────────────────────────────────────────────────────────────
 export const WEDDING_PRESETS = [
-  { id: 'natural',        label: 'Natural',        filter: 'none' },
-  { id: 'kodak-warm',     label: 'Kodak Warm',     filter: 'sepia(0.15) brightness(1.05) contrast(0.95) saturate(1.1)' },
-  { id: 'fuji-cool',      label: 'Fuji Cool',      filter: 'hue-rotate(5deg) saturate(0.9) brightness(1.08) contrast(1.05)' },
-  { id: 'cinematic-fade', label: 'Cinematic Fade', filter: 'brightness(1.1) contrast(0.85) saturate(0.8)' },
-  { id: 'airy-light',     label: 'Airy & Light',   filter: 'brightness(1.2) contrast(0.9) saturate(0.85)' },
-  { id: 'pastel-soft',    label: 'Pastel Soft',    filter: 'brightness(1.15) contrast(0.88) saturate(0.75) sepia(0.08)' },
-  { id: 'moody-dark',     label: 'Moody Dark',     filter: 'brightness(0.85) contrast(1.2) saturate(0.9)' },
-  { id: 'sunset-warm',    label: 'Sunset Warm',    filter: 'sepia(0.2) saturate(1.2) brightness(1.05) hue-rotate(-10deg)' },
-  { id: 'overcast-blue',  label: 'Overcast Blue',  filter: 'hue-rotate(10deg) saturate(0.85) brightness(1.05)' },
-  { id: 'clean-bw',       label: 'Clean B&W',      filter: 'grayscale(1) contrast(1.1)' },
-  { id: 'hc-bw',          label: 'Hi-Con B&W',     filter: 'grayscale(1) contrast(1.4) brightness(0.95)' },
-  { id: 'soft-bw',        label: 'Soft B&W',       filter: 'grayscale(1) contrast(0.9) brightness(1.1)' },
+  // ── Base ──
+  { id: 'natural',          label: 'Natural',          filter: 'none' },
+
+  // ── Film Emulation ──
+  { id: 'kodak-warm',       label: 'Kodak Warm',       filter: 'sepia(0.15) brightness(1.05) contrast(0.95) saturate(1.1)' },
+  { id: 'fuji-cool',        label: 'Fuji Cool',        filter: 'hue-rotate(5deg) saturate(0.9) brightness(1.08) contrast(1.05)' },
+  { id: 'kodak-portra',     label: 'Kodak Portra',     filter: 'sepia(0.1) brightness(1.08) contrast(0.92) saturate(1.05) hue-rotate(-3deg)' },
+  { id: 'cinematic-fade',   label: 'Cinematic Fade',   filter: 'brightness(1.1) contrast(0.85) saturate(0.8)' },
+
+  // ── Wedding / Couple ──
+  { id: 'airy-light',       label: 'Airy & Light',     filter: 'brightness(1.2) contrast(0.9) saturate(0.85)' },
+  { id: 'pastel-soft',      label: 'Pastel Soft',      filter: 'brightness(1.15) contrast(0.88) saturate(0.75) sepia(0.08)' },
+  { id: 'champagne',        label: 'Champagne',        filter: 'brightness(1.25) contrast(0.82) saturate(0.65) sepia(0.1)' },
+  { id: 'golden-hour',      label: 'Golden Hour',      filter: 'sepia(0.28) saturate(1.35) brightness(1.1) hue-rotate(-12deg) contrast(0.95)' },
+  { id: 'rose-gold',        label: 'Rose Gold',        filter: 'hue-rotate(340deg) saturate(1.15) brightness(1.1) contrast(0.93) sepia(0.08)' },
+  { id: 'ethereal',         label: 'Ethereal White',   filter: 'brightness(1.35) contrast(0.78) saturate(0.6) sepia(0.05)' },
+
+  // ── Dreamy ──
+  { id: 'dreamy-haze',      label: 'Dreamy Haze',      filter: 'brightness(1.28) contrast(0.8) saturate(0.65) sepia(0.06)' },
+  { id: 'cotton-candy',     label: 'Cotton Candy',     filter: 'hue-rotate(330deg) saturate(0.85) brightness(1.22) contrast(0.85)' },
+  { id: 'morning-mist',     label: 'Morning Mist',     filter: 'brightness(1.18) contrast(0.82) saturate(0.58) hue-rotate(5deg)' },
+  { id: 'velvet-dusk',      label: 'Velvet Dusk',      filter: 'brightness(0.88) contrast(1.15) saturate(1.12) hue-rotate(8deg)' },
+
+  // ── Moody / Editorial ──
+  { id: 'moody-dark',       label: 'Moody Dark',       filter: 'brightness(0.85) contrast(1.2) saturate(0.9)' },
+  { id: 'sunset-warm',      label: 'Sunset Warm',      filter: 'sepia(0.2) saturate(1.2) brightness(1.05) hue-rotate(-10deg)' },
+  { id: 'lush-greens',      label: 'Lush Greens',      filter: 'hue-rotate(12deg) saturate(1.2) brightness(1.02) contrast(1.06)' },
+  { id: 'overcast-blue',    label: 'Overcast Blue',    filter: 'hue-rotate(10deg) saturate(0.85) brightness(1.05)' },
+  { id: 'film-noir-mix',    label: 'Film Noir',        filter: 'grayscale(0.55) contrast(1.2) brightness(0.95) sepia(0.1)' },
+
+  // ── Black & White ──
+  { id: 'clean-bw',         label: 'Clean B&W',        filter: 'grayscale(1) contrast(1.1)' },
+  { id: 'hc-bw',            label: 'Hi-Con B&W',       filter: 'grayscale(1) contrast(1.4) brightness(0.95)' },
+  { id: 'soft-bw',          label: 'Soft B&W',         filter: 'grayscale(1) contrast(0.9) brightness(1.1)' },
+  { id: 'selenium',         label: 'Selenium',         filter: 'grayscale(1) contrast(1.1) brightness(1.02) sepia(0.18)' },
 ];
 
 export const SPORTS_PRESETS = [
-  { id: 'natural',         label: 'Natural',        filter: 'none' },
-  { id: 'stadium-punch',   label: 'Stadium Punch',  filter: 'contrast(1.3) saturate(1.4) brightness(1.05)' },
-  { id: 'bleach-bypass',   label: 'Bleach Bypass',  filter: 'saturate(0.3) contrast(1.4)' },
-  { id: 'neon-night',      label: 'Neon Night',     filter: 'hue-rotate(10deg) saturate(1.2) brightness(1.1) contrast(1.15)' },
-  { id: 'dust-gravel',     label: 'Dust & Gravel',  filter: 'sepia(0.25) saturate(1.1) brightness(1.05) hue-rotate(-5deg)' },
-  { id: 'bw-impact',       label: 'B&W Impact',     filter: 'grayscale(1) contrast(1.5) brightness(0.9)' },
-  { id: 'warrior-grade',   label: 'Warrior Grade',  filter: 'hue-rotate(-15deg) saturate(1.3) contrast(1.2)' },
-  { id: 'clean-bright',    label: 'Clean & Bright', filter: 'brightness(1.1) contrast(1.1) saturate(1.15)' },
+  // ── Base ──
+  { id: 'natural',          label: 'Natural',          filter: 'none' },
+
+  // ── Punchy / Action ──
+  { id: 'stadium-punch',    label: 'Stadium Punch',    filter: 'contrast(1.3) saturate(1.4) brightness(1.05)' },
+  { id: 'clean-bright',     label: 'Clean & Bright',   filter: 'brightness(1.1) contrast(1.1) saturate(1.15)' },
+  { id: 'golden-glory',     label: 'Golden Glory',     filter: 'sepia(0.15) saturate(1.35) brightness(1.08) contrast(1.15) hue-rotate(-10deg)' },
+  { id: 'action-red',       label: 'Action Red',       filter: 'hue-rotate(-8deg) saturate(1.5) contrast(1.25) brightness(1.02)' },
+
+  // ── Cinematic ──
+  { id: 'warrior-grade',    label: 'Warrior Grade',    filter: 'hue-rotate(-15deg) saturate(1.3) contrast(1.2)' },
+  { id: 'netflix-doc',      label: 'Netflix Doc',      filter: 'hue-rotate(-20deg) saturate(1.2) contrast(1.18) brightness(0.97)' },
+  { id: 'teal-orange',      label: 'Teal & Orange',    filter: 'hue-rotate(-18deg) saturate(1.4) contrast(1.15) brightness(1.02)' },
+
+  // ── Gritty / Raw ──
+  { id: 'bleach-bypass',    label: 'Bleach Bypass',    filter: 'saturate(0.3) contrast(1.4)' },
+  { id: 'dust-gravel',      label: 'Dust & Gravel',    filter: 'sepia(0.25) saturate(1.1) brightness(1.05) hue-rotate(-5deg)' },
+  { id: 'raw-earth',        label: 'Raw Earth',        filter: 'sepia(0.35) saturate(1.05) contrast(1.1) brightness(1.0) hue-rotate(-8deg)' },
+
+  // ── Night / Indoor ──
+  { id: 'neon-night',       label: 'Neon Night',       filter: 'hue-rotate(10deg) saturate(1.2) brightness(1.1) contrast(1.15)' },
+  { id: 'ice-blue',         label: 'Ice Blue',         filter: 'hue-rotate(195deg) saturate(0.9) brightness(1.08) contrast(1.12)' },
+  { id: 'indoor-tungsten',  label: 'Indoor Tungsten',  filter: 'sepia(0.3) saturate(1.1) brightness(1.05) hue-rotate(-20deg) contrast(1.05)' },
+
+  // ── Black & White ──
+  { id: 'bw-impact',        label: 'B&W Impact',       filter: 'grayscale(1) contrast(1.5) brightness(0.9)' },
+  { id: 'bw-dramatic',      label: 'B&W Dramatic',     filter: 'grayscale(1) contrast(1.6) brightness(0.85) sepia(0.05)' },
+  { id: 'bw-clean-sport',   label: 'B&W Clean',        filter: 'grayscale(1) contrast(1.2) brightness(1.05)' },
 ];
 
 // ─── FONTS ──────────────────────────────────────────────────────────────────────

@@ -2,14 +2,47 @@ import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { TEMPLATE_CATEGORIES, WEDDING_PRESETS, SPORTS_PRESETS } from '../constants';
 import { getTemplate, computeZones } from '../utils';
 
-function PhotoZone({ zone, zoneKey, photo, preset, accentColor, isSelected, onClick, onWheel, onDragStart, flipH, panX, panY, photoScale }) {
-  const allPresets = [...WEDDING_PRESETS, ...SPORTS_PRESETS];
-  const presetObj = allPresets.find(p => p.id === preset);
+const ALL_PRESETS = [...WEDDING_PRESETS, ...SPORTS_PRESETS];
+
+function PhotoZone({ zone, zoneKey, photo, preset, accentColor, isSelected, onClick, onWheel, flipH, panX, panY, photoScale, onPan }) {
+  const presetObj = ALL_PRESETS.find(p => p.id === preset);
   const filterStr = presetObj?.filter || 'none';
+
+  const dragging = useRef(false);
+  const dragStart = useRef(null);
+
+  const handleMouseDown = useCallback((e) => {
+    if (!isSelected) {
+      // First click just selects
+      onClick(zoneKey);
+      return;
+    }
+    if (!photo?.url) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragging.current = true;
+    dragStart.current = { mx: e.clientX, my: e.clientY, panX: panX || 0, panY: panY || 0 };
+
+    const move = (ev) => {
+      if (!dragging.current) return;
+      const dx = ev.clientX - dragStart.current.mx;
+      const dy = ev.clientY - dragStart.current.my;
+      onPan(zoneKey, dragStart.current.panX + dx, dragStart.current.panY + dy);
+    };
+    const up = () => {
+      dragging.current = false;
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  }, [isSelected, photo, zoneKey, panX, panY, onPan, onClick]);
+
+  const cursor = isSelected && photo?.url ? 'grab' : 'pointer';
 
   return (
     <div
-      onClick={() => onClick(zoneKey)}
+      onMouseDown={handleMouseDown}
       onWheel={onWheel}
       style={{
         position: 'absolute',
@@ -18,32 +51,42 @@ function PhotoZone({ zone, zoneKey, photo, preset, accentColor, isSelected, onCl
         width: zone.w,
         height: zone.h,
         overflow: 'hidden',
-        cursor: 'pointer',
+        cursor,
         boxShadow: isSelected ? `inset 0 0 0 2px ${accentColor}` : 'none',
         zIndex: isSelected ? 2 : 1,
         background: '#0A0A0A',
+        userSelect: 'none',
       }}
-      draggable={false}
     >
       {photo?.url ? (
-        <img
-          src={photo.url}
-          alt=""
-          draggable={false}
+        <div
           style={{
             position: 'absolute',
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: `calc(50% + ${panX || 0}px) calc(50% + ${panY || 0}px)`,
-            transform: `scale(${photoScale || 1}) ${flipH ? 'scaleX(-1)' : ''}`,
+            inset: 0,
+            backgroundImage: `url("${photo.url}")`,
+            backgroundSize: `${Math.round((photoScale || 1) * 100)}%`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: `calc(50% + ${panX || 0}px) calc(50% + ${panY || 0}px)`,
             filter: filterStr,
-            transformOrigin: 'center center',
-            pointerEvents: 'none',
+            transform: flipH ? 'scaleX(-1)' : 'none',
+            transformOrigin: 'center',
           }}
         />
       ) : (
         <div style={{ width: '100%', height: '100%', background: '#0A0A0A' }} />
+      )}
+
+      {/* Pan hint when selected */}
+      {isSelected && photo?.url && (
+        <div style={{
+          position: 'absolute', bottom: 6, left: 0, right: 0,
+          textAlign: 'center', fontSize: 9, color: accentColor,
+          fontFamily: 'DM Sans, sans-serif', pointerEvents: 'none',
+          opacity: 0.8,
+          textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+        }}>
+          drag to reframe · scroll to zoom
+        </div>
       )}
     </div>
   );
@@ -152,6 +195,8 @@ export default function CanvasEditor({
   logoDataUrl, allPresets,
 }) {
   const containerRef = useRef();
+  const wrapRef = useRef();
+  const displayScaleRef = useRef(1);
 
   const canvasW = ratio.w;
   const canvasH = ratio.h;
@@ -163,7 +208,6 @@ export default function CanvasEditor({
   const bgColor = slide.borderSettings?.bgColor || '#000000';
   const vignette = slide.borderSettings?.vignette || tmpl?.vignette;
 
-  // Inner border
   const ib = slide.borderSettings?.innerBorder;
   const innerBorderStyle = ib && ib !== 'none' ? {
     position: 'absolute', inset: 0, zIndex: 9,
@@ -179,9 +223,16 @@ export default function CanvasEditor({
   const handleZoneWheel = useCallback((e, zoneKey) => {
     e.preventDefault();
     const current = slide.zoom?.scale?.[zoneKey] ?? 1;
-    const next = Math.max(0.5, Math.min(4, current - e.deltaY * 0.001));
+    const next = Math.max(0.5, Math.min(5, current - e.deltaY * 0.002));
     onUpdateZoom(zoneKey, 'scale', next);
   }, [slide.zoom, onUpdateZoom]);
+
+  // Pan handler: called by PhotoZone on drag
+  const handleZonePan = useCallback((zoneKey, newPanX, newPanY) => {
+    const s = displayScaleRef.current || 1;
+    onUpdateZoom(zoneKey, 'x', newPanX / s);
+    onUpdateZoom(zoneKey, 'y', newPanY / s);
+  }, [onUpdateZoom]);
 
   const handleCanvasClick = useCallback((e) => {
     if (e.target === containerRef.current || e.currentTarget === e.target) {
@@ -190,24 +241,21 @@ export default function CanvasEditor({
     }
   }, [setSelectedZone, setSelectedTextId]);
 
-  // Handle photo drop onto canvas zone
   const handleZoneDrop = useCallback((e, zoneKey) => {
     e.preventDefault();
     const photoId = e.dataTransfer.getData('photoId');
     if (photoId) onAssignPhotoToZone(zoneKey, photoId);
   }, [onAssignPhotoToZone]);
 
-  // Calculate display scale to fit canvas in available space
   const [displayScale, setDisplayScale] = useState(1);
-  const wrapRef = useRef();
   useEffect(() => {
     const measure = () => {
       if (!wrapRef.current) return;
       const { clientWidth: cw, clientHeight: ch } = wrapRef.current;
       const pad = 60;
-      const scaleW = (cw - pad) / canvasW;
-      const scaleH = (ch - pad) / canvasH;
-      setDisplayScale(Math.min(scaleW, scaleH, 1));
+      const s = Math.min((cw - pad) / canvasW, (ch - pad) / canvasH, 1);
+      displayScaleRef.current = s;
+      setDisplayScale(s);
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -225,7 +273,6 @@ export default function CanvasEditor({
       style={{ background: '#0D0D0D', position: 'relative' }}
       onClick={handleCanvasClick}
     >
-      {/* Floating canvas */}
       <div
         ref={containerRef}
         className="canvas-wrapper relative flex-shrink-0"
@@ -265,48 +312,29 @@ export default function CanvasEditor({
                 preset={presetId}
                 accentColor={accentColor}
                 isSelected={selectedZone === zoneKey}
-                onClick={() => handleZoneClick(zoneKey)}
+                onClick={handleZoneClick}
                 onWheel={e => handleZoneWheel(e, zoneKey)}
                 flipH={photo?.flipH}
                 panX={(slide.zoom?.x?.[zoneKey] || 0) * displayScale}
                 panY={(slide.zoom?.y?.[zoneKey] || 0) * displayScale}
                 photoScale={slide.zoom?.scale?.[zoneKey] || 1}
+                onPan={handleZonePan}
               />
             </div>
           );
         })}
 
-        {/* Gradient overlay */}
         {tmpl?.gradient && (
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 3,
-            background: tmpl.gradient,
-            pointerEvents: 'none',
-          }} />
+          <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: tmpl.gradient, pointerEvents: 'none' }} />
         )}
-
-        {/* Color overlay */}
         {tmpl?.overlay && (
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 3,
-            background: tmpl.overlay,
-            pointerEvents: 'none',
-          }} />
+          <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: tmpl.overlay, pointerEvents: 'none' }} />
         )}
-
-        {/* Vignette */}
         {vignette && (
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 4,
-            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.75) 100%)',
-            pointerEvents: 'none',
-          }} />
+          <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.75) 100%)', pointerEvents: 'none' }} />
         )}
-
-        {/* Inner border */}
         {innerBorderStyle && <div style={innerBorderStyle} />}
 
-        {/* Text blocks */}
         {(slide.textBlocks || []).map(tb => (
           <TextBlock
             key={tb.id}
@@ -319,23 +347,14 @@ export default function CanvasEditor({
           />
         ))}
 
-        {/* Logo */}
         {slide.logoSettings?.enabled && logoDataUrl && (
-          <LogoOverlay
-            logoDataUrl={logoDataUrl}
-            settings={slide.logoSettings}
-            canvasW={dispW}
-            canvasH={dispH}
-            accentColor={accentColor}
-          />
+          <LogoOverlay logoDataUrl={logoDataUrl} settings={slide.logoSettings} canvasW={dispW} canvasH={dispH} />
         )}
       </div>
 
-      {/* Canvas size indicator */}
       <div style={{
         position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
-        fontSize: 9, color: '#333', fontFamily: 'DM Mono, monospace',
-        pointerEvents: 'none',
+        fontSize: 9, color: '#333', fontFamily: 'DM Mono, monospace', pointerEvents: 'none',
       }}>
         {ratio.exportW}×{ratio.exportH}px export
       </div>
@@ -343,17 +362,12 @@ export default function CanvasEditor({
   );
 }
 
-function LogoOverlay({ logoDataUrl, settings, canvasW, canvasH, accentColor }) {
+function LogoOverlay({ logoDataUrl, settings, canvasW, canvasH }) {
   const lw = canvasW * (settings.scale || 0.15);
   const lx = canvasW * (settings.x || 0.85) - lw / 2;
   const ly = canvasH * (settings.y || 0.9) - lw * 0.3;
-
   return (
-    <div style={{
-      position: 'absolute', left: lx, top: ly, zIndex: 8,
-      opacity: settings.opacity ?? 1,
-      pointerEvents: 'none',
-    }}>
+    <div style={{ position: 'absolute', left: lx, top: ly, zIndex: 8, opacity: settings.opacity ?? 1, pointerEvents: 'none' }}>
       <img src={logoDataUrl} alt="Logo" style={{ width: lw, height: 'auto', display: 'block' }} />
     </div>
   );
