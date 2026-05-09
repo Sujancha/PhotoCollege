@@ -6,7 +6,7 @@ const ALL_PRESETS = [...WEDDING_PRESETS, ...SPORTS_PRESETS];
 
 // ─── PHOTO ZONE ──────────────────────────────────────────────────────────────────
 function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accentColor, isSelected,
-  onClick, onWheel, flipH, panX, panY, photoScale, onPan, onZoneDragStart, onZoneDrop }) {
+  onClick, onZoomDelta, flipH, panX, panY, photoScale, onPan, onZoneDragStart, onZoneDrop }) {
 
   const presetObj = ALL_PRESETS.find(p => p.id === preset);
   const filterStr = presetObj?.filter || 'none';
@@ -15,6 +15,20 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accent
   const dragStart = useRef(null);
   const [dropOver, setDropOver] = useState(false);
   const [isDraggingOut, setIsDraggingOut] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+  const divRef = useRef();
+
+  // Non-passive wheel listener so we can prevent page scroll while zooming
+  useEffect(() => {
+    const el = divRef.current;
+    if (!el) return;
+    const handler = (e) => {
+      e.preventDefault();
+      onZoomDelta(zoneKey, e.deltaY);
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [zoneKey, onZoomDelta]);
 
   // Mouse drag to pan (only when zone already selected)
   const handleMouseDown = useCallback((e) => {
@@ -29,6 +43,7 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accent
     e.preventDefault();
     e.stopPropagation();
     draggingPhoto.current = true;
+    setIsPanning(true);
     dragStart.current = { mx: e.clientX, my: e.clientY, px: panX, py: panY };
 
     const move = (ev) => {
@@ -38,6 +53,7 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accent
     };
     const up = () => {
       draggingPhoto.current = false;
+      setIsPanning(false);
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
     };
@@ -45,9 +61,9 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accent
     window.addEventListener('mouseup', up);
   }, [isSelected, photo, zoneKey, panX, panY, onPan, onClick]);
 
-  // Drag THIS zone's photo out (to swap with another zone)
+  // Drag THIS zone's photo out to swap — only when zone is NOT selected
   const handleDragStart = (e) => {
-    if (!photo?.url) { e.preventDefault(); return; }
+    if (!photo?.url || isSelected) { e.preventDefault(); return; }
     setIsDraggingOut(true);
     e.dataTransfer.setData('photoId', photo.id);
     e.dataTransfer.setData('sourceType', 'zone');
@@ -58,9 +74,10 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accent
 
   return (
     <div
+      ref={divRef}
       onMouseDown={handleMouseDown}
-      onWheel={onWheel}
-      draggable={!!photo?.url}
+      // draggable only when NOT selected; when selected, mouse is used for panning
+      draggable={!isSelected && !!photo?.url}
       onDragStart={handleDragStart}
       onDragEnd={() => setIsDraggingOut(false)}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropOver(true); }}
@@ -74,7 +91,7 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accent
         position: 'absolute',
         left: zone.x, top: zone.y, width: zone.w, height: zone.h,
         overflow: 'hidden',
-        cursor: isSelected && photo?.url ? 'grab' : 'pointer',
+        cursor: isSelected && photo?.url ? (isPanning ? 'grabbing' : 'grab') : 'pointer',
         outline: isSelected
           ? `2px solid ${accentColor}`
           : dropOver ? `2px dashed ${accentColor}88` : 'none',
@@ -96,11 +113,13 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accent
             position: 'absolute',
             top: '50%',
             left: '50%',
-            // Contain: show full photo by default; user can scroll-to-zoom to fill
+            // Cover: auto-fill the zone; scroll to zoom further, drag to reframe
+            minWidth: '100%',
+            minHeight: '100%',
             width: 'auto',
             height: 'auto',
-            maxWidth: '100%',
-            maxHeight: '100%',
+            maxWidth: 'none',
+            maxHeight: 'none',
             // Transform: center → pan → zoom → flip
             transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${photoScale || 1}) ${flipH ? 'scaleX(-1)' : ''}`,
             transformOrigin: 'center center',
@@ -296,10 +315,10 @@ export default function CanvasEditor({
     setSelectedTextId(null);
   }, [setSelectedZone, setSelectedTextId]);
 
-  const handleZoneWheel = useCallback((e, zoneKey) => {
-    e.preventDefault();
+  // Called from the non-passive wheel listener inside PhotoZone
+  const handleZoomDelta = useCallback((zoneKey, deltaY) => {
     const current = slide.zoom?.scale?.[zoneKey] ?? 1;
-    onUpdateZoom(zoneKey, 'scale', Math.max(0.5, Math.min(5, current - e.deltaY * 0.002)));
+    onUpdateZoom(zoneKey, 'scale', Math.max(0.5, Math.min(5, current - deltaY * 0.002)));
   }, [slide.zoom, onUpdateZoom]);
 
   const handleZonePan = useCallback((zoneKey, newPanX, newPanY) => {
@@ -394,7 +413,7 @@ export default function CanvasEditor({
               accentColor={accentColor}
               isSelected={selectedZone === zoneKey}
               onClick={handleZoneClick}
-              onWheel={e => handleZoneWheel(e, zoneKey)}
+              onZoomDelta={handleZoomDelta}
               flipH={photo?.flipH}
               panX={(slide.zoom?.x?.[zoneKey] || 0) * displayScale}
               panY={(slide.zoom?.y?.[zoneKey] || 0) * displayScale}
