@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { Upload, ImageIcon } from 'lucide-react';
 import { generateId } from '../utils';
+import { MAX_PHOTOS } from '../constants';
 
 function PhotoThumb({ photo, index, zoneLabel, onRemove, onDragStart, onDrop, accentColor, onClick, isSelected }) {
   const [dragging, setDragging] = useState(false);
@@ -123,7 +124,7 @@ export default function LeftSidebar({ photos, onPhotosAdded, onReorder, onRemove
           Media Pool
         </span>
         <span style={{ fontSize: 9, color: '#444', fontFamily: 'DM Mono, monospace' }}>
-          {photos.length}/20
+          {photos.length}/{MAX_PHOTOS}
         </span>
       </div>
 

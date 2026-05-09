@@ -576,6 +576,41 @@ export const TEXT_COLOR_PRESETS = [
   { color: '#E63946', label: 'Red' },
 ];
 
+// ─── PHOTO LIMIT ─────────────────────────────────────────────────────────────────
+export const MAX_PHOTOS = 30;
+
+// ─── ONBOARDING VIBES ────────────────────────────────────────────────────────────
+export const VIBES = {
+  wedding: [
+    { id: 'ceremony',   label: 'Wedding Ceremony',      icon: '💒' },
+    { id: 'couple',     label: 'Couple Portraits',       icon: '💑' },
+    { id: 'engagement', label: 'Engagement Session',     icon: '💍' },
+    { id: 'reception',  label: 'Reception / Party',      icon: '🥂' },
+    { id: 'fineart',    label: 'Pre-Wedding / Fine Art', icon: '🌿' },
+  ],
+  sports: [
+    { id: 'team',       label: 'Team Shot',              icon: '🏆' },
+    { id: 'highlights', label: 'Match Highlights',       icon: '⚽' },
+    { id: 'player',     label: 'Player Feature',         icon: '⭐' },
+    { id: 'action',     label: 'Action Shots',           icon: '⚡' },
+    { id: 'training',   label: 'Training / BTS',         icon: '💪' },
+  ],
+};
+
+// Ordered template category IDs per vibe (most relevant first)
+export const VIBE_TEMPLATE_ORDER = {
+  ceremony:   ['single', 'cinematic', 'stacked', 'collage', 'sports'],
+  couple:     ['single', 'stacked', 'cinematic', 'collage', 'sports'],
+  engagement: ['cinematic', 'single', 'stacked', 'collage', 'sports'],
+  reception:  ['collage', 'stacked', 'single', 'cinematic', 'sports'],
+  fineart:    ['cinematic', 'single', 'stacked', 'collage', 'sports'],
+  team:       ['collage', 'stacked', 'sports', 'single', 'cinematic'],
+  highlights: ['stacked', 'cinematic', 'sports', 'collage', 'single'],
+  player:     ['single', 'sports', 'cinematic', 'stacked', 'collage'],
+  action:     ['sports', 'single', 'cinematic', 'stacked', 'collage'],
+  training:   ['stacked', 'collage', 'sports', 'cinematic', 'single'],
+};
+
 // ─── TEXT PRESETS ────────────────────────────────────────────────────────────────
 export const TEXT_PRESETS = [
   // Wedding / Editorial

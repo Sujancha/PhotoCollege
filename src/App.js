@@ -1,20 +1,24 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { RATIOS, createDefaultSlide, createDefaultTextBlock, WEDDING_PRESETS, SPORTS_PRESETS } from './constants';
-import { generateId, getAccentColor, loadGoogleFont } from './utils';
+import { RATIOS, TEMPLATE_CATEGORIES, createDefaultSlide, createDefaultTextBlock, WEDDING_PRESETS, SPORTS_PRESETS, MAX_PHOTOS } from './constants';
+import { generateId, getAccentColor, loadGoogleFont, getTemplate } from './utils';
 import { useBrandKit } from './hooks/useBrandKit';
 import { useExport } from './hooks/useExport';
+import { loadSavedPhotos, savePhoto, deletePhoto as dbDeletePhoto, updatePhotoFlip } from './hooks/usePhotoStore';
 import TopBar from './components/TopBar';
 import LeftSidebar from './components/LeftSidebar';
 import CanvasEditor from './components/CanvasEditor';
 import RightSidebar from './components/RightSidebar';
 import BrandKitModal from './components/BrandKitModal';
 import SlideNavigator from './components/SlideNavigator';
+import Wizard from './components/Wizard';
+import AddSlideModal from './components/AddSlideModal';
 
 loadGoogleFont('Cormorant Garamond');
 loadGoogleFont('DM Sans');
 
 export default function App() {
   const [mode, setMode] = useState('wedding');
+  const [vibe, setVibe] = useState(null);
   const [currentRatio, setCurrentRatio] = useState('1:1');
   const [slides, setSlides] = useState(() => [createDefaultSlide(generateId())]);
   const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
@@ -24,17 +28,29 @@ export default function App() {
   const [selectedTextId, setSelectedTextId] = useState(null);
   const [rightTab, setRightTab] = useState('templates');
   const [showBrandKit, setShowBrandKit] = useState(false);
+  const [showAddSlide, setShowAddSlide] = useState(false);
+  const [showWizard, setShowWizard] = useState(true);
   const [recentFonts, setRecentFonts] = useState([]);
-  const [lastTemplateId, setLastTemplateId] = useState('full-bleed');
 
   const { brandKit, saveBrandKit, resetBrandKit } = useBrandKit();
   const currentSlide = slides[currentSlideIdx] || slides[0];
   const accentColor = getAccentColor(mode);
   const historyRef = useRef([]);
 
+  // Per-slide ratio: use current slide's ratio if set, else global default
+  const displayRatio = currentSlide.ratio || currentRatio;
+  const ratio = RATIOS.find(r => r.id === displayRatio) || RATIOS[0];
+
   useEffect(() => {
     document.documentElement.style.setProperty('--accent-color', accentColor);
   }, [accentColor]);
+
+  // Load persisted photos from IndexedDB on mount
+  useEffect(() => {
+    loadSavedPhotos().then(saved => {
+      if (saved.length > 0) setPhotos(saved);
+    });
+  }, []);
 
   useEffect(() => {
     const handler = (e) => {
@@ -42,7 +58,6 @@ export default function App() {
       const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
       const mod = e.ctrlKey || e.metaKey;
 
-      // Global modifier shortcuts (work everywhere)
       if (mod && e.key === 'z') { e.preventDefault(); undo(); return; }
       if (mod && e.key === 's') { e.preventDefault(); exportCurrentSlide(currentSlide); return; }
 
@@ -70,9 +85,10 @@ export default function App() {
   }, [slides.length, currentSlideIdx, selectedTextId]);
 
   const { exporting, exportProgress, exportCurrentSlide, exportAllSlides, exportTikTok } = useExport(
-    slides, photos, logoDataUrl, currentRatio
+    slides, photos, logoDataUrl, displayRatio
   );
 
+  // ── Undo ──────────────────────────────────────────────────────────────────────
   const undo = useCallback(() => {
     if (historyRef.current.length === 0) return;
     const prev = historyRef.current[historyRef.current.length - 1];
@@ -80,13 +96,45 @@ export default function App() {
     setSlides(prev);
   }, []);
 
-  const addSlide = useCallback(() => {
-    const newSlide = { ...createDefaultSlide(generateId()), ratio: currentRatio, templateId: lastTemplateId };
-    if (brandKit.autoApply) newSlide.globalPreset = brandKit.defaultPreset;
+  // ── Wizard completion ─────────────────────────────────────────────────────────
+  const handleWizardComplete = useCallback(({ mode: m, vibe: v, photos: p, ratio: r, templateId: t }) => {
+    setMode(m);
+    setVibe(v);
+    setCurrentRatio(r);
+    setPhotos(p);
+    p.forEach(photo => savePhoto(photo));
+
+    // Auto-assign first N photos to template zones
+    const tmplObj = getTemplate(t, TEMPLATE_CATEGORIES);
+    const assignments = {};
+    (p.slice(0, tmplObj?.slots || 1)).forEach((ph, i) => { assignments[`zone-${i}`] = ph.id; });
+
+    setSlides([{
+      ...createDefaultSlide(generateId()),
+      ratio: r,
+      templateId: t,
+      photoAssignments: assignments,
+      globalPreset: brandKit.autoApply ? brandKit.defaultPreset : 'natural',
+    }]);
+    setCurrentSlideIdx(0);
+    setShowWizard(false);
+  }, [brandKit]);
+
+  // ── Add slide from modal ──────────────────────────────────────────────────────
+  const handleAddSlide = useCallback(({ ratio: r, templateId: t }) => {
+    const newSlide = {
+      ...createDefaultSlide(generateId()),
+      ratio: r,
+      templateId: t,
+      globalPreset: brandKit.autoApply ? brandKit.defaultPreset : 'natural',
+    };
     setSlides(s => { historyRef.current = [...historyRef.current.slice(-29), s]; return [...s, newSlide]; });
     setCurrentSlideIdx(slides.length);
-  }, [currentRatio, lastTemplateId, brandKit, slides.length]);
+    setCurrentRatio(r);
+    setShowAddSlide(false);
+  }, [slides.length, brandKit]);
 
+  // ── Slide management ─────────────────────────────────────────────────────────
   const removeSlide = useCallback((idx) => {
     if (slides.length === 1) return;
     setSlides(s => { historyRef.current = [...historyRef.current.slice(-29), s]; return s.filter((_, i) => i !== idx); });
@@ -108,15 +156,19 @@ export default function App() {
   }, [currentSlideIdx]);
 
   const applyTemplate = useCallback((templateId) => {
-    setLastTemplateId(templateId);
     const assignments = {};
     photos.forEach((p, i) => { assignments[`zone-${i}`] = p.id; });
     updateCurrentSlide({ templateId, photoAssignments: assignments });
     setSelectedZone(null);
   }, [photos, updateCurrentSlide]);
 
+  // ── Photo management ─────────────────────────────────────────────────────────
   const handlePhotosAdded = useCallback((newPhotos) => {
-    setPhotos(p => [...p, ...newPhotos].slice(0, 20));
+    setPhotos(p => {
+      const next = [...p, ...newPhotos].slice(0, MAX_PHOTOS);
+      newPhotos.forEach(ph => savePhoto(ph));
+      return next;
+    });
   }, []);
 
   const reorderPhotos = useCallback((fromIdx, toIdx) => {
@@ -125,6 +177,7 @@ export default function App() {
 
   const removePhoto = useCallback((photoId) => {
     setPhotos(p => p.filter(ph => ph.id !== photoId));
+    dbDeletePhoto(photoId);
     setSlides(s => s.map(sl => {
       const pa = { ...sl.photoAssignments };
       Object.keys(pa).forEach(k => { if (pa[k] === photoId) delete pa[k]; });
@@ -139,18 +192,22 @@ export default function App() {
   const flipPhotoInZone = useCallback((zoneKey) => {
     const photoId = currentSlide.photoAssignments[zoneKey];
     if (!photoId) return;
-    setPhotos(p => p.map(ph => ph.id === photoId ? { ...ph, flipH: !ph.flipH } : ph));
+    setPhotos(p => p.map(ph => {
+      if (ph.id !== photoId) return ph;
+      updatePhotoFlip(ph.id, !ph.flipH);
+      return { ...ph, flipH: !ph.flipH };
+    }));
   }, [currentSlide]);
 
   const swapZonePhotos = useCallback((fromZone, toZone) => {
     const pa = { ...currentSlide.photoAssignments };
-    const fromPhoto = pa[fromZone];
-    const toPhoto = pa[toZone];
+    const fromPhoto = pa[fromZone]; const toPhoto = pa[toZone];
     if (fromPhoto) pa[toZone] = fromPhoto; else delete pa[toZone];
     if (toPhoto) pa[fromZone] = toPhoto; else delete pa[fromZone];
     updateCurrentSlide({ photoAssignments: pa });
   }, [currentSlide, updateCurrentSlide]);
 
+  // ── Text management ───────────────────────────────────────────────────────────
   const addTextBlock = useCallback(() => {
     const tb = createDefaultTextBlock(generateId(), accentColor);
     updateCurrentSlide({ textBlocks: [...(currentSlide.textBlocks || []), tb] });
@@ -184,6 +241,7 @@ export default function App() {
     updateTextBlock(selectedTextId, style);
   }, [selectedTextId, updateTextBlock]);
 
+  // ── Presets / zoom / borders ──────────────────────────────────────────────────
   const applyPresetToZone = useCallback((presetId, zoneKey) => {
     updateCurrentSlide({ presets: { ...currentSlide.presets, [zoneKey]: presetId } });
   }, [currentSlide, updateCurrentSlide]);
@@ -199,7 +257,6 @@ export default function App() {
   }, [currentSlide, updateCurrentSlide]);
 
   const presets = mode === 'wedding' ? WEDDING_PRESETS : SPORTS_PRESETS;
-  const ratio = RATIOS.find(r => r.id === currentRatio) || RATIOS[0];
   const selectedTextBlock = (currentSlide.textBlocks || []).find(t => t.id === selectedTextId);
 
   return (
@@ -207,7 +264,7 @@ export default function App() {
       <TopBar
         mode={mode}
         setMode={setMode}
-        currentRatio={currentRatio}
+        currentRatio={displayRatio}
         setCurrentRatio={(r) => { setCurrentRatio(r); updateCurrentSlide({ ratio: r }); }}
         accentColor={accentColor}
         onExportCurrent={() => exportCurrentSlide(currentSlide)}
@@ -256,7 +313,7 @@ export default function App() {
             photos={photos}
             accentColor={accentColor}
             onSelect={setCurrentSlideIdx}
-            onAdd={addSlide}
+            onAdd={() => setShowAddSlide(true)}
             onRemove={removeSlide}
             onDuplicate={duplicateSlide}
             ratio={ratio}
@@ -295,6 +352,24 @@ export default function App() {
           onSave={saveBrandKit}
           onReset={resetBrandKit}
           onClose={() => setShowBrandKit(false)}
+          accentColor={accentColor}
+        />
+      )}
+
+      {showAddSlide && (
+        <AddSlideModal
+          onAdd={handleAddSlide}
+          onClose={() => setShowAddSlide(false)}
+          defaultRatio={displayRatio}
+          vibe={vibe}
+          accentColor={accentColor}
+        />
+      )}
+
+      {showWizard && (
+        <Wizard
+          onComplete={handleWizardComplete}
+          initialPhotos={photos}
           accentColor={accentColor}
         />
       )}
