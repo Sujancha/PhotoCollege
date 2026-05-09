@@ -3,6 +3,7 @@ import { RATIOS, TEMPLATE_CATEGORIES, createDefaultSlide, createDefaultTextBlock
 import { generateId, getAccentColor, loadGoogleFont, getTemplate, computeZones } from './utils';
 import { useBrandKit } from './hooks/useBrandKit';
 import { useExport } from './hooks/useExport';
+import { useIsMobile } from './hooks/useIsMobile';
 import { loadSavedPhotos, savePhoto, deletePhoto as dbDeletePhoto, updatePhotoFlip } from './hooks/usePhotoStore';
 import TopBar from './components/TopBar';
 import LeftSidebar from './components/LeftSidebar';
@@ -12,6 +13,7 @@ import BrandKitModal from './components/BrandKitModal';
 import SlideNavigator from './components/SlideNavigator';
 import Wizard from './components/Wizard';
 import AddSlideModal from './components/AddSlideModal';
+import MobileLayout from './components/MobileLayout';
 
 loadGoogleFont('Cormorant Garamond');
 loadGoogleFont('DM Sans');
@@ -36,6 +38,7 @@ export default function App() {
   const currentSlide = slides[currentSlideIdx] || slides[0];
   const accentColor = getAccentColor(mode);
   const historyRef = useRef([]);
+  const isMobile = useIsMobile();
 
   // Per-slide ratio: use current slide's ratio if set, else global default
   const displayRatio = currentSlide.ratio || currentRatio;
@@ -341,6 +344,46 @@ export default function App() {
 
   const presets = mode === 'wedding' ? WEDDING_PRESETS : SPORTS_PRESETS;
   const selectedTextBlock = (currentSlide.textBlocks || []).find(t => t.id === selectedTextId);
+
+  // ── Mobile layout ─────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <>
+        <MobileLayout
+          mode={mode} setMode={setMode}
+          displayRatio={displayRatio}
+          setCurrentRatio={(r) => { setCurrentRatio(r); updateCurrentSlide({ ratio: r }); }}
+          accentColor={accentColor}
+          slides={slides} currentSlideIdx={currentSlideIdx} setCurrentSlideIdx={setCurrentSlideIdx}
+          photos={photos} handlePhotosAdded={handlePhotosAdded} removePhoto={removePhoto}
+          currentSlide={currentSlide} ratio={ratio}
+          selectedZone={selectedZone} setSelectedZone={setSelectedZone}
+          selectedTextId={selectedTextId} setSelectedTextId={setSelectedTextId}
+          logoDataUrl={logoDataUrl} setLogoDataUrl={setLogoDataUrl} brandKit={brandKit}
+          assignPhotoToZone={assignPhotoToZone} unassignZone={unassignZone}
+          updateTextBlock={updateTextBlock} deleteTextBlock={deleteTextBlock}
+          addTextBlock={addTextBlock} addTextBlockWithStyle={addTextBlockWithStyle}
+          applyTemplate={applyTemplate}
+          applyPresetToZone={applyPresetToZone} applyPresetToAll={applyPresetToAll}
+          updatePresetOpacity={updatePresetOpacity}
+          updateZoom={updateZoom} updateZoomPan={updateZoomPan}
+          swapZonePhotos={swapZonePhotos} flipPhotoInZone={flipPhotoInZone}
+          updateCurrentSlide={updateCurrentSlide}
+          resetAllEffects={resetAllEffects} applyQuickStyle={applyQuickStyle}
+          exportCurrentSlide={exportCurrentSlide} exporting={exporting} exportProgress={exportProgress}
+          setShowAddSlide={setShowAddSlide}
+          removeSlide={removeSlide} duplicateSlide={duplicateSlide}
+          presets={presets} recentFonts={recentFonts} selectedTextBlock={selectedTextBlock}
+        />
+        {showAddSlide && (
+          <AddSlideModal onAdd={handleAddSlide} onClose={() => setShowAddSlide(false)} defaultRatio={displayRatio} vibe={null} accentColor={accentColor} />
+        )}
+        {showWizard && (
+          <Wizard onComplete={handleWizardComplete} initialPhotos={photos} accentColor={accentColor} />
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: '#0F0F0F' }}>
