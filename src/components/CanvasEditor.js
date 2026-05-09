@@ -168,10 +168,18 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
   const [editing, setEditing] = useState(false);
   const dragStart = useRef(null);
 
+  // Gradient text support via background-clip trick
+  const gradientStyle = tb.gradient ? {
+    background: `linear-gradient(${tb.gradient.angle ?? 135}deg, ${tb.gradient.stops.join(', ')})`,
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    color: 'transparent',
+  } : { color: tb.color };
+
   const textStyle = {
     fontFamily: `"${tb.font}", sans-serif`,
     fontSize: tb.size,
-    color: tb.color,
     textAlign: tb.align || 'center',
     opacity: tb.opacity ?? 1,
     letterSpacing: `${tb.letterSpacing || 0}px`,
@@ -189,10 +197,11 @@ function TextBlock({ tb, isSelected, onClick, onUpdate, canvasW, canvasH }) {
     cursor: editing ? 'text' : 'move',
     resize: 'none',
     minHeight: 20,
+    ...gradientStyle,
   };
 
   const pillStyle = tb.bgPill ? {
-    background: 'rgba(0,0,0,0.55)', padding: '4px 12px', borderRadius: 4, display: 'inline-block',
+    background: tb.bgColor || 'rgba(0,0,0,0.55)', padding: '4px 12px', borderRadius: 4, display: 'inline-block',
   } : {};
 
   const handleMouseDown = (e) => {

@@ -135,7 +135,6 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
     const style = tb.italic ? 'italic' : 'normal';
     ctx.font = `${style} ${weight} ${fontSize}px "${tb.font}", sans-serif`;
     ctx.globalAlpha = tb.opacity ?? 1;
-    ctx.fillStyle = tb.color || '#FFFFFF';
     ctx.textAlign = tb.align || 'center';
 
     const tx = (tb.x / 100) * w;
@@ -158,16 +157,34 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
       const pillW = metrics.width + 24 * scale;
       const pillH = fontSize + 16 * scale;
       const pillX = tx - (tb.align === 'center' ? pillW / 2 : tb.align === 'right' ? pillW : 0);
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillStyle = tb.bgColor || 'rgba(0,0,0,0.6)';
       ctx.shadowColor = 'transparent';
       ctx.beginPath();
       ctx.roundRect(pillX, ty - pillH * 0.75, pillW, pillH, 6 * scale);
       ctx.fill();
-      ctx.fillStyle = tb.color || '#FFFFFF';
       if (tb.shadow) {
         ctx.shadowColor = 'rgba(0,0,0,0.7)';
         ctx.shadowBlur = (tb.shadowIntensity || 4) * scale;
       }
+    }
+
+    // Gradient or solid fill
+    if (tb.gradient) {
+      const metrics = ctx.measureText(displayText);
+      const textW = metrics.width;
+      const angleRad = ((tb.gradient.angle ?? 135) - 90) * Math.PI / 180;
+      const half = textW / 2;
+      const gx1 = tx - Math.cos(angleRad) * half;
+      const gy1 = ty - Math.sin(angleRad) * half;
+      const gx2 = tx + Math.cos(angleRad) * half;
+      const gy2 = ty + Math.sin(angleRad) * half;
+      const grad = ctx.createLinearGradient(gx1, gy1, gx2, gy2);
+      tb.gradient.stops.forEach((stop, i) => {
+        grad.addColorStop(i / Math.max(tb.gradient.stops.length - 1, 1), stop);
+      });
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = tb.color || '#FFFFFF';
     }
 
     ctx.fillText(displayText, tx, ty);

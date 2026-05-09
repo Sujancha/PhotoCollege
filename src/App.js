@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { RATIOS, createDefaultSlide, createDefaultTextBlock, WEDDING_PRESETS, SPORTS_PRESETS } from './constants';
 import { generateId, getAccentColor, loadGoogleFont } from './utils';
 import { useBrandKit } from './hooks/useBrandKit';
@@ -30,6 +30,7 @@ export default function App() {
   const { brandKit, saveBrandKit, resetBrandKit } = useBrandKit();
   const currentSlide = slides[currentSlideIdx] || slides[0];
   const accentColor = getAccentColor(mode);
+  const historyRef = useRef([]);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--accent-color', accentColor);
@@ -38,49 +39,72 @@ export default function App() {
   useEffect(() => {
     const handler = (e) => {
       const tag = document.activeElement?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      const mod = e.ctrlKey || e.metaKey;
+
+      // Global modifier shortcuts (work everywhere)
+      if (mod && e.key === 'z') { e.preventDefault(); undo(); return; }
+      if (mod && e.key === 's') { e.preventDefault(); exportCurrentSlide(currentSlide); return; }
+
+      if (inInput) return;
+
       if (e.key === 'Tab') {
         e.preventDefault();
         if (e.shiftKey) setCurrentSlideIdx(i => Math.max(0, i - 1));
         else setCurrentSlideIdx(i => Math.min(slides.length - 1, i + 1));
       }
-      if (e.key === 'd' || e.key === 'D') duplicateSlide(currentSlideIdx);
-      if (e.key === 'e' || e.key === 'E') exportCurrentSlide(currentSlide);
+      if (!mod) {
+        if (e.key === 'd' || e.key === 'D') duplicateSlide(currentSlideIdx);
+        if (e.key === 'e' || e.key === 'E') exportCurrentSlide(currentSlide);
+      }
       if (e.key === 'ArrowLeft') setCurrentSlideIdx(i => Math.max(0, i - 1));
       if (e.key === 'ArrowRight') setCurrentSlideIdx(i => Math.min(slides.length - 1, i + 1));
       if (e.key === 'Escape') { setSelectedZone(null); setSelectedTextId(null); }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTextId) {
+        e.preventDefault(); deleteTextBlock(selectedTextId);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slides.length, currentSlideIdx]);
+  }, [slides.length, currentSlideIdx, selectedTextId]);
 
   const { exporting, exportProgress, exportCurrentSlide, exportAllSlides, exportTikTok } = useExport(
     slides, photos, logoDataUrl, currentRatio
   );
 
+  const undo = useCallback(() => {
+    if (historyRef.current.length === 0) return;
+    const prev = historyRef.current[historyRef.current.length - 1];
+    historyRef.current = historyRef.current.slice(0, -1);
+    setSlides(prev);
+  }, []);
+
   const addSlide = useCallback(() => {
     const newSlide = { ...createDefaultSlide(generateId()), ratio: currentRatio, templateId: lastTemplateId };
     if (brandKit.autoApply) newSlide.globalPreset = brandKit.defaultPreset;
-    setSlides(s => [...s, newSlide]);
+    setSlides(s => { historyRef.current = [...historyRef.current.slice(-29), s]; return [...s, newSlide]; });
     setCurrentSlideIdx(slides.length);
   }, [currentRatio, lastTemplateId, brandKit, slides.length]);
 
   const removeSlide = useCallback((idx) => {
     if (slides.length === 1) return;
-    setSlides(s => s.filter((_, i) => i !== idx));
+    setSlides(s => { historyRef.current = [...historyRef.current.slice(-29), s]; return s.filter((_, i) => i !== idx); });
     setCurrentSlideIdx(i => Math.min(i, slides.length - 2));
   }, [slides.length]);
 
   const duplicateSlide = useCallback((idx) => {
     const clone = { ...slides[idx], id: generateId() };
     clone.textBlocks = (clone.textBlocks || []).map(t => ({ ...t, id: generateId() }));
-    setSlides(s => { const n = [...s]; n.splice(idx + 1, 0, clone); return n; });
+    setSlides(s => { historyRef.current = [...historyRef.current.slice(-29), s]; const n = [...s]; n.splice(idx + 1, 0, clone); return n; });
     setCurrentSlideIdx(idx + 1);
   }, [slides]);
 
   const updateCurrentSlide = useCallback((updates) => {
-    setSlides(s => s.map((sl, i) => i === currentSlideIdx ? { ...sl, ...updates } : sl));
+    setSlides(prev => {
+      historyRef.current = [...historyRef.current.slice(-29), prev];
+      return prev.map((sl, i) => i === currentSlideIdx ? { ...sl, ...updates } : sl);
+    });
   }, [currentSlideIdx]);
 
   const applyTemplate = useCallback((templateId) => {
@@ -129,6 +153,13 @@ export default function App() {
 
   const addTextBlock = useCallback(() => {
     const tb = createDefaultTextBlock(generateId(), accentColor);
+    updateCurrentSlide({ textBlocks: [...(currentSlide.textBlocks || []), tb] });
+    setSelectedTextId(tb.id);
+    setRightTab('text');
+  }, [currentSlide, updateCurrentSlide, accentColor]);
+
+  const addTextBlockWithStyle = useCallback((style) => {
+    const tb = { ...createDefaultTextBlock(generateId(), accentColor), ...style };
     updateCurrentSlide({ textBlocks: [...(currentSlide.textBlocks || []), tb] });
     setSelectedTextId(tb.id);
     setRightTab('text');
@@ -188,18 +219,6 @@ export default function App() {
         onBrandKit={() => setShowBrandKit(true)}
       />
 
-      <SlideNavigator
-        slides={slides}
-        currentIdx={currentSlideIdx}
-        photos={photos}
-        accentColor={accentColor}
-        onSelect={setCurrentSlideIdx}
-        onAdd={addSlide}
-        onRemove={removeSlide}
-        onDuplicate={duplicateSlide}
-        ratio={ratio}
-      />
-
       <div className="flex flex-1 overflow-hidden">
         <LeftSidebar
           photos={photos}
@@ -212,23 +231,37 @@ export default function App() {
           currentSlide={currentSlide}
         />
 
-        <CanvasEditor
-          slide={currentSlide}
-          ratio={ratio}
-          photos={photos}
-          mode={mode}
-          accentColor={accentColor}
-          selectedZone={selectedZone}
-          setSelectedZone={setSelectedZone}
-          selectedTextId={selectedTextId}
-          setSelectedTextId={setSelectedTextId}
-          onUpdateTextBlock={updateTextBlock}
-          onAssignPhotoToZone={assignPhotoToZone}
-          onUpdateZoom={updateZoom}
-          onSwapZones={swapZonePhotos}
-          logoDataUrl={brandKit.logoDataUrl || logoDataUrl}
-          allPresets={[...WEDDING_PRESETS, ...SPORTS_PRESETS]}
-        />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <CanvasEditor
+            slide={currentSlide}
+            ratio={ratio}
+            photos={photos}
+            mode={mode}
+            accentColor={accentColor}
+            selectedZone={selectedZone}
+            setSelectedZone={setSelectedZone}
+            selectedTextId={selectedTextId}
+            setSelectedTextId={setSelectedTextId}
+            onUpdateTextBlock={updateTextBlock}
+            onAssignPhotoToZone={assignPhotoToZone}
+            onUpdateZoom={updateZoom}
+            onSwapZones={swapZonePhotos}
+            logoDataUrl={brandKit.logoDataUrl || logoDataUrl}
+            allPresets={[...WEDDING_PRESETS, ...SPORTS_PRESETS]}
+          />
+
+          <SlideNavigator
+            slides={slides}
+            currentIdx={currentSlideIdx}
+            photos={photos}
+            accentColor={accentColor}
+            onSelect={setCurrentSlideIdx}
+            onAdd={addSlide}
+            onRemove={removeSlide}
+            onDuplicate={duplicateSlide}
+            ratio={ratio}
+          />
+        </div>
 
         <RightSidebar
           mode={mode}
@@ -247,6 +280,7 @@ export default function App() {
           onUpdateTextBlock={updateTextBlock}
           onDeleteTextBlock={deleteTextBlock}
           onApplyQuickStyle={applyQuickStyle}
+          onAddTextWithStyle={addTextBlockWithStyle}
           onUpdateBorderSettings={(bs) => updateCurrentSlide({ borderSettings: { ...currentSlide.borderSettings, ...bs } })}
           onUpdateLogoSettings={(ls) => updateCurrentSlide({ logoSettings: { ...currentSlide.logoSettings, ...ls } })}
           logoDataUrl={brandKit.logoDataUrl || logoDataUrl}

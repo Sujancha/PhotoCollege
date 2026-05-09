@@ -576,6 +576,24 @@ export const TEXT_COLOR_PRESETS = [
   { color: '#E63946', label: 'Red' },
 ];
 
+// ─── TEXT PRESETS ────────────────────────────────────────────────────────────────
+export const TEXT_PRESETS = [
+  // Wedding / Editorial
+  { id: 'tp-romantic',     label: 'Romantic Script', category: 'wedding', preview: 'Great Vibes',         style: { font: 'Great Vibes',          size: 72, italic: false, bold: false, color: '#FFFFFF', letterSpacing: 2,  transform: 'none',      align: 'center', shadow: true,  shadowIntensity: 8 } },
+  { id: 'tp-elegant',      label: 'Elegant Serif',   category: 'wedding', preview: 'Cormorant Garamond',  style: { font: 'Cormorant Garamond',   size: 56, italic: true,  bold: false, color: '#FFFFFF', letterSpacing: 6,  transform: 'uppercase', align: 'center', shadow: true,  shadowIntensity: 5 } },
+  { id: 'tp-minimal',      label: 'Minimal Caps',    category: 'wedding', preview: 'Josefin Sans',        style: { font: 'Josefin Sans',         size: 28, italic: false, bold: false, color: '#FFFFFF', letterSpacing: 12, transform: 'uppercase', align: 'center', shadow: false } },
+  { id: 'tp-gold',         label: 'Gold Foil',       category: 'wedding', preview: 'Playfair Display',    style: { font: 'Playfair Display',     size: 52, italic: false, bold: true,  color: '#C9A96E', letterSpacing: 3,  transform: 'none',      align: 'center', shadow: true,  shadowIntensity: 6, gradient: { angle: 135, stops: ['#C9A96E', '#F5E6C8', '#C9A96E'] } } },
+  // Couples / Love
+  { id: 'tp-love',         label: 'Love Vibes',      category: 'couples', preview: 'Dancing Script',      style: { font: 'Dancing Script',       size: 60, italic: false, bold: false, color: '#FFB3C6', letterSpacing: 1,  transform: 'none',      align: 'center', shadow: true,  shadowIntensity: 8, gradient: { angle: 135, stops: ['#FFB3C6', '#FF8FAB', '#C77DFF'] } } },
+  { id: 'tp-dreamy',       label: 'Dreamy Italic',   category: 'couples', preview: 'Lora',                style: { font: 'Lora',                 size: 48, italic: true,  bold: false, color: '#FFE4E1', letterSpacing: 1,  transform: 'none',      align: 'center', shadow: true,  shadowIntensity: 10 } },
+  { id: 'tp-couple-names', label: 'Couple Names',    category: 'couples', preview: 'DM Mono',             style: { font: 'DM Mono',              size: 22, italic: false, bold: false, color: '#FFFFFF', letterSpacing: 6,  transform: 'uppercase', align: 'center', shadow: false } },
+  // Sports
+  { id: 'tp-hype',         label: 'Hype Bold',       category: 'sports',  preview: 'Bebas Neue',          style: { font: 'Bebas Neue',           size: 80, italic: false, bold: false, color: '#FFFFFF', letterSpacing: 6,  transform: 'uppercase', align: 'center', shadow: true,  shadowIntensity: 8 } },
+  { id: 'tp-fire',         label: 'Fire Stats',      category: 'sports',  preview: 'Barlow Condensed',    style: { font: 'Barlow Condensed',     size: 64, italic: true,  bold: true,  color: '#FF6B35', letterSpacing: 2,  transform: 'uppercase', align: 'center', shadow: true,  shadowIntensity: 6, gradient: { angle: 90, stops: ['#FF6B35', '#FFD700'] } } },
+  { id: 'tp-athletic',     label: 'Athletic',        category: 'sports',  preview: 'Oswald',              style: { font: 'Oswald',               size: 52, italic: false, bold: false, color: '#00A8FF', letterSpacing: 8,  transform: 'uppercase', align: 'center', shadow: false } },
+  { id: 'tp-action',       label: 'Action Block',    category: 'sports',  preview: 'Anton',               style: { font: 'Anton',                size: 72, italic: false, bold: false, color: '#FFFFFF', letterSpacing: 4,  transform: 'uppercase', align: 'center', bgPill: true, bgColor: 'rgba(0,0,0,0.75)', shadow: false } },
+];
+
 // ─── DEFAULT SLIDE ────────────────────────────────────────────────────────────────
 export function createDefaultSlide(id) {
   return {

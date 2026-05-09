@@ -18,7 +18,7 @@ export default function RightSidebar({
   mode, tab, setTab, accentColor, slide, selectedZone, selectedTextBlock,
   photos, presets, recentFonts,
   onApplyTemplate, onApplyPresetToZone, onApplyPresetToAll,
-  onUpdateTextBlock, onDeleteTextBlock, onApplyQuickStyle,
+  onUpdateTextBlock, onDeleteTextBlock, onApplyQuickStyle, onAddTextWithStyle,
   onUpdateBorderSettings, onUpdateLogoSettings, logoDataUrl, onLogoUpload, onFlipZone,
 }) {
   return (
@@ -85,6 +85,7 @@ export default function RightSidebar({
             onUpdate={onUpdateTextBlock}
             onDelete={onDeleteTextBlock}
             onApplyQuickStyle={onApplyQuickStyle}
+            onAddWithStyle={onAddTextWithStyle}
             accentColor={accentColor}
           />
         )}

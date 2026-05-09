@@ -80,7 +80,7 @@ export default function SlideNavigator({
       style={{
         height: 90,
         background: '#111111',
-        borderBottom: '1px solid #222',
+        borderTop: '1px solid #222',
         paddingLeft: 8,
         paddingRight: 8,
         gap: 0,
