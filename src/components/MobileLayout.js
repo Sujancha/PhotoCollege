@@ -216,7 +216,7 @@ export default function MobileLayout({
   const [canvasAreaH, setCanvasAreaH] = useState(() => Math.max(100, window.innerHeight - CHROME_H));
   useEffect(() => {
     const compute = () => {
-      const drawerH = panelOpen ? window.innerHeight * 0.5 : 0;
+      const drawerH = panelOpen ? window.innerHeight * 0.38 : 0;
       setCanvasAreaH(Math.max(100, window.innerHeight - CHROME_H - drawerH));
     };
     compute();
@@ -391,7 +391,7 @@ export default function MobileLayout({
       {/* ── Bottom Drawer ───────────────────────────────────────────────── */}
       <div style={{
         flexShrink: 0,
-        height: panelOpen ? '50vh' : 0,
+        height: panelOpen ? '38vh' : 0,
         transition: 'height 240ms ease',
         overflow: 'hidden',
         background: '#1A1A1A',
