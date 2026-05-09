@@ -1,0 +1,585 @@
+// ─── ASPECT RATIOS ─────────────────────────────────────────────────────────────
+export const RATIOS = [
+  { id: '1:1',  label: '1:1',  w: 1080, h: 1080, exportW: 3000, exportH: 3000 },
+  { id: '4:5',  label: '4:5',  w: 864,  h: 1080, exportW: 2400, exportH: 3000 },
+  { id: '9:16', label: '9:16', w: 608,  h: 1080, exportW: 1080, exportH: 1920 },
+  { id: '16:9', label: '16:9', w: 1080, h: 608,  exportW: 3000, exportH: 1688 },
+  { id: '3:1',  label: '3:1',  w: 1080, h: 360,  exportW: 3000, exportH: 1000 },
+];
+
+// ─── TEMPLATES ──────────────────────────────────────────────────────────────────
+export const TEMPLATE_CATEGORIES = [
+  {
+    id: 'single',
+    label: 'Single Frame',
+    templates: [
+      {
+        id: 'full-bleed',
+        label: 'Full Bleed',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w, h }],
+        border: null,
+      },
+      {
+        id: 'white-border',
+        label: 'White Border',
+        slots: 1,
+        padding: 40,
+        zones: (w, h) => [{ x: 40, y: 40, w: w - 80, h: h - 80 }],
+        outerBg: '#FFFFFF',
+      },
+      {
+        id: 'film-border',
+        label: 'Film Border',
+        slots: 1,
+        padding: 30,
+        zones: (w, h) => [{ x: 30, y: 30, w: w - 60, h: h - 60 }],
+        outerBg: '#000000',
+      },
+      {
+        id: 'magazine-cover',
+        label: 'Magazine Cover',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w, h }],
+        gradient: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 50%)',
+        textArea: true,
+      },
+    ],
+  },
+  {
+    id: 'stacked',
+    label: 'Stacked / Triptych',
+    templates: [
+      {
+        id: 'split-v',
+        label: '2-Photo Vertical Split',
+        slots: 2,
+        zones: (w, h, g = 4) => [
+          { x: 0, y: 0, w: (w - g) / 2, h },
+          { x: (w - g) / 2 + g, y: 0, w: (w - g) / 2, h },
+        ],
+      },
+      {
+        id: 'triptych-v',
+        label: '3-Photo Triptych',
+        slots: 3,
+        zones: (w, h, g = 4) => [
+          { x: 0, y: 0, w: (w - g * 2) / 3, h },
+          { x: (w - g * 2) / 3 + g, y: 0, w: (w - g * 2) / 3, h },
+          { x: ((w - g * 2) / 3) * 2 + g * 2, y: 0, w: (w - g * 2) / 3, h },
+        ],
+      },
+      {
+        id: 'stacked-h',
+        label: '3-Photo Stacked Horizontal',
+        slots: 3,
+        zones: (w, h, g = 4) => [
+          { x: 0, y: 0, w, h: (h - g * 2) / 3 },
+          { x: 0, y: (h - g * 2) / 3 + g, w, h: (h - g * 2) / 3 },
+          { x: 0, y: ((h - g * 2) / 3) * 2 + g * 2, w, h: (h - g * 2) / 3 },
+        ],
+      },
+      {
+        id: 'hero-strip',
+        label: 'Hero + Strip Below',
+        slots: 4,
+        zones: (w, h, g = 4) => {
+          const heroH = Math.round(h * 0.65);
+          const stripH = h - heroH - g;
+          const sw = (w - g * 2) / 3;
+          return [
+            { x: 0, y: 0, w, h: heroH },
+            { x: 0, y: heroH + g, w: sw, h: stripH },
+            { x: sw + g, y: heroH + g, w: sw, h: stripH },
+            { x: sw * 2 + g * 2, y: heroH + g, w: sw, h: stripH },
+          ];
+        },
+      },
+    ],
+  },
+  {
+    id: 'collage',
+    label: 'Collage Grid',
+    templates: [
+      {
+        id: 'grid-2x2',
+        label: '4-Photo 2×2 Grid',
+        slots: 4,
+        zones: (w, h, g = 4) => {
+          const hw = (w - g) / 2;
+          const hh = (h - g) / 2;
+          return [
+            { x: 0, y: 0, w: hw, h: hh },
+            { x: hw + g, y: 0, w: hw, h: hh },
+            { x: 0, y: hh + g, w: hw, h: hh },
+            { x: hw + g, y: hh + g, w: hw, h: hh },
+          ];
+        },
+      },
+      {
+        id: 'large-left',
+        label: '1 Large Left + 2 Right',
+        slots: 4,
+        zones: (w, h, g = 4) => {
+          const lw = Math.round(w * 0.6);
+          const rw = w - lw - g;
+          const rh = (h - g) / 2;
+          return [
+            { x: 0, y: 0, w: lw, h },
+            { x: lw + g, y: 0, w: rw, h: rh },
+            { x: lw + g, y: rh + g, w: rw, h: rh },
+          ];
+        },
+      },
+      {
+        id: 'large-right',
+        label: '2 Left + 1 Large Right',
+        slots: 3,
+        zones: (w, h, g = 4) => {
+          const rw = Math.round(w * 0.6);
+          const lw = w - rw - g;
+          const lh = (h - g) / 2;
+          return [
+            { x: 0, y: 0, w: lw, h: lh },
+            { x: 0, y: lh + g, w: lw, h: lh },
+            { x: lw + g, y: 0, w: rw, h },
+          ];
+        },
+      },
+      {
+        id: 'grid-3x2',
+        label: '6-Photo 3×2 Grid',
+        slots: 6,
+        zones: (w, h, g = 4) => {
+          const cw = (w - g * 2) / 3;
+          const rh = (h - g) / 2;
+          return [
+            { x: 0, y: 0, w: cw, h: rh },
+            { x: cw + g, y: 0, w: cw, h: rh },
+            { x: cw * 2 + g * 2, y: 0, w: cw, h: rh },
+            { x: 0, y: rh + g, w: cw, h: rh },
+            { x: cw + g, y: rh + g, w: cw, h: rh },
+            { x: cw * 2 + g * 2, y: rh + g, w: cw, h: rh },
+          ];
+        },
+      },
+      {
+        id: 'grid-3x3',
+        label: '9-Photo 3×3 Grid',
+        slots: 9,
+        zones: (w, h, g = 4) => {
+          const cw = (w - g * 2) / 3;
+          const rh = (h - g * 2) / 3;
+          const zones = [];
+          for (let r = 0; r < 3; r++)
+            for (let c = 0; c < 3; c++)
+              zones.push({ x: c * (cw + g), y: r * (rh + g), w: cw, h: rh });
+          return zones;
+        },
+      },
+    ],
+  },
+  {
+    id: 'cinematic',
+    label: 'Cinematic / Editorial',
+    templates: [
+      {
+        id: 'quote-card',
+        label: 'Full Bleed Quote Card',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w, h }],
+        overlay: 'rgba(0,0,0,0.45)',
+        textArea: true,
+      },
+      {
+        id: 'three-panel',
+        label: '3 Panel Horizontal',
+        slots: 3,
+        zones: (w, h, g = 4) => {
+          const pw = (w - g * 2) / 3;
+          return [
+            { x: 0, y: 0, w: pw, h },
+            { x: pw + g, y: 0, w: pw, h },
+            { x: pw * 2 + g * 2, y: 0, w: pw, h },
+          ];
+        },
+      },
+      {
+        id: 'double-exposure',
+        label: 'Double Exposure',
+        slots: 2,
+        zones: (w, h) => [
+          { x: 0, y: 0, w, h },
+          { x: 0, y: 0, w, h, blendMode: 'multiply', opacity: 0.7 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'sports',
+    label: 'Sports',
+    templates: [
+      {
+        id: 'sports-hero',
+        label: 'Sports Hero Shot',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w, h }],
+        vignette: true,
+        gradient: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 50%)',
+        textArea: true,
+      },
+      {
+        id: 'dual-action',
+        label: 'Dual Action',
+        slots: 2,
+        zones: (w, h) => [
+          { x: 0, y: 0, w: w / 2, h },
+          { x: w / 2, y: 0, w: w / 2, h },
+        ],
+      },
+      {
+        id: 'triple-moment',
+        label: 'Triple Moment',
+        slots: 3,
+        zones: (w, h, g = 3) => {
+          const pw = (w - g * 2) / 3;
+          return [
+            { x: 0, y: 0, w: pw, h },
+            { x: pw + g, y: 0, w: pw, h },
+            { x: pw * 2 + g * 2, y: 0, w: pw, h },
+          ];
+        },
+      },
+      {
+        id: 'player-profile',
+        label: 'Player Profile',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w, h }],
+        gradient: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 60%)',
+        textArea: true,
+      },
+      {
+        id: 'stat-card',
+        label: 'Stat Card',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w: Math.round(w * 0.55), h }],
+        solidPanel: { color: '#111111', x: 0.55, textArea: true },
+      },
+      {
+        id: 'squad-card',
+        label: 'Squad Card',
+        slots: 4,
+        zones: (w, h, g = 4) => {
+          const heroH = Math.round(h * 0.65);
+          const stripH = h - heroH - g;
+          const sw = (w - g * 2) / 3;
+          return [
+            { x: 0, y: 0, w, h: heroH },
+            { x: 0, y: heroH + g, w: sw, h: stripH },
+            { x: sw + g, y: heroH + g, w: sw, h: stripH },
+            { x: sw * 2 + g * 2, y: heroH + g, w: sw, h: stripH },
+          ];
+        },
+      },
+      {
+        id: 'score-card',
+        label: 'Score Card',
+        slots: 2,
+        zones: (w, h) => [
+          { x: 0, y: 0, w: (w - 80) / 2, h },
+          { x: (w - 80) / 2 + 80, y: 0, w: (w - 80) / 2, h },
+        ],
+        centerDivider: true,
+        textArea: true,
+      },
+      {
+        id: 'action-triptych',
+        label: 'Action Triptych',
+        slots: 3,
+        zones: (w, h, g = 3) => {
+          const rh = (h - g * 2) / 3;
+          return [
+            { x: 0, y: 0, w, h: rh },
+            { x: 0, y: rh + g, w, h: rh },
+            { x: 0, y: rh * 2 + g * 2, w, h: rh },
+          ];
+        },
+      },
+      {
+        id: 'grid-recap',
+        label: 'Grid Recap',
+        slots: 6,
+        titleBar: 60,
+        zones: (w, h, g = 4) => {
+          const top = 60;
+          const cw = (w - g) / 2;
+          const rh = (h - top - g * 2) / 3;
+          return [
+            { x: 0, y: top, w: cw, h: rh },
+            { x: cw + g, y: top, w: cw, h: rh },
+            { x: 0, y: top + rh + g, w: cw, h: rh },
+            { x: cw + g, y: top + rh + g, w: cw, h: rh },
+            { x: 0, y: top + (rh + g) * 2, w: cw, h: rh },
+            { x: cw + g, y: top + (rh + g) * 2, w: cw, h: rh },
+          ];
+        },
+      },
+      {
+        id: 'full-bleed-story',
+        label: 'Full Bleed Story',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w, h }],
+        gradient: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 33%, rgba(0,0,0,0) 67%, rgba(0,0,0,0.7) 100%)',
+        textArea: true,
+      },
+      {
+        id: 'split-story',
+        label: 'Split Story',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w, h: Math.round(h * 0.5) }],
+        solidPanel: { color: '#0D0D0D', y: 0.5, textArea: true },
+      },
+      {
+        id: 'twitter-banner',
+        label: 'Twitter/X Banner',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w, h }],
+        overlay: 'rgba(0,0,0,0.4)',
+        textArea: true,
+      },
+    ],
+  },
+];
+
+// ─── COLOR PRESETS ──────────────────────────────────────────────────────────────
+export const WEDDING_PRESETS = [
+  { id: 'natural',        label: 'Natural',        filter: 'none' },
+  { id: 'kodak-warm',     label: 'Kodak Warm',     filter: 'sepia(0.15) brightness(1.05) contrast(0.95) saturate(1.1)' },
+  { id: 'fuji-cool',      label: 'Fuji Cool',      filter: 'hue-rotate(5deg) saturate(0.9) brightness(1.08) contrast(1.05)' },
+  { id: 'cinematic-fade', label: 'Cinematic Fade', filter: 'brightness(1.1) contrast(0.85) saturate(0.8)' },
+  { id: 'airy-light',     label: 'Airy & Light',   filter: 'brightness(1.2) contrast(0.9) saturate(0.85)' },
+  { id: 'pastel-soft',    label: 'Pastel Soft',    filter: 'brightness(1.15) contrast(0.88) saturate(0.75) sepia(0.08)' },
+  { id: 'moody-dark',     label: 'Moody Dark',     filter: 'brightness(0.85) contrast(1.2) saturate(0.9)' },
+  { id: 'sunset-warm',    label: 'Sunset Warm',    filter: 'sepia(0.2) saturate(1.2) brightness(1.05) hue-rotate(-10deg)' },
+  { id: 'overcast-blue',  label: 'Overcast Blue',  filter: 'hue-rotate(10deg) saturate(0.85) brightness(1.05)' },
+  { id: 'clean-bw',       label: 'Clean B&W',      filter: 'grayscale(1) contrast(1.1)' },
+  { id: 'hc-bw',          label: 'Hi-Con B&W',     filter: 'grayscale(1) contrast(1.4) brightness(0.95)' },
+  { id: 'soft-bw',        label: 'Soft B&W',       filter: 'grayscale(1) contrast(0.9) brightness(1.1)' },
+];
+
+export const SPORTS_PRESETS = [
+  { id: 'natural',         label: 'Natural',        filter: 'none' },
+  { id: 'stadium-punch',   label: 'Stadium Punch',  filter: 'contrast(1.3) saturate(1.4) brightness(1.05)' },
+  { id: 'bleach-bypass',   label: 'Bleach Bypass',  filter: 'saturate(0.3) contrast(1.4)' },
+  { id: 'neon-night',      label: 'Neon Night',     filter: 'hue-rotate(10deg) saturate(1.2) brightness(1.1) contrast(1.15)' },
+  { id: 'dust-gravel',     label: 'Dust & Gravel',  filter: 'sepia(0.25) saturate(1.1) brightness(1.05) hue-rotate(-5deg)' },
+  { id: 'bw-impact',       label: 'B&W Impact',     filter: 'grayscale(1) contrast(1.5) brightness(0.9)' },
+  { id: 'warrior-grade',   label: 'Warrior Grade',  filter: 'hue-rotate(-15deg) saturate(1.3) contrast(1.2)' },
+  { id: 'clean-bright',    label: 'Clean & Bright', filter: 'brightness(1.1) contrast(1.1) saturate(1.15)' },
+];
+
+// ─── FONTS ──────────────────────────────────────────────────────────────────────
+export const FONT_BUCKETS = [
+  {
+    id: 'romantic',
+    label: 'Romantic / Editorial',
+    mode: 'wedding',
+    fonts: ['Playfair Display', 'Cormorant Garamond', 'IM Fell English', 'Bodoni Moda'],
+  },
+  {
+    id: 'modern',
+    label: 'Modern Minimal',
+    mode: 'both',
+    fonts: ['Josefin Sans', 'DM Sans', 'Raleway', 'Tenor Sans'],
+  },
+  {
+    id: 'cinematic',
+    label: 'Cinematic / Luxury',
+    mode: 'both',
+    fonts: ['Cinzel', 'Bebas Neue', 'Italiana', 'Forum'],
+  },
+  {
+    id: 'handwritten',
+    label: 'Handwritten / Organic',
+    mode: 'wedding',
+    fonts: ['Dancing Script', 'Great Vibes', 'Sacramento', 'Parisienne'],
+  },
+  {
+    id: 'hype',
+    label: 'Hype / Bold',
+    mode: 'sports',
+    fonts: ['Bebas Neue', 'Anton', 'Barlow Condensed', 'Oswald'],
+  },
+  {
+    id: 'sports-headline',
+    label: 'Player Name / Sports',
+    mode: 'sports',
+    fonts: ['Rajdhani', 'Teko', 'Russo One', 'Big Shoulders Display'],
+  },
+  {
+    id: 'mono',
+    label: 'Stats / Monospace',
+    mode: 'sports',
+    fonts: ['DM Mono', 'Space Mono', 'IBM Plex Mono', 'Roboto Mono'],
+  },
+  {
+    id: 'cultural',
+    label: 'Cultural / Community',
+    mode: 'both',
+    fonts: ['Yatra One', 'Tiro Devanagari Latin', 'Noto Serif Devanagari', 'Hind'],
+  },
+];
+
+// Google Fonts URL name mappings (some need +weight suffix or different name)
+export const GOOGLE_FONT_NAMES = {
+  'Playfair Display': 'Playfair+Display:ital,wght@0,400;0,700;1,400',
+  'Cormorant Garamond': 'Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400',
+  'IM Fell English': 'IM+Fell+English:ital@0;1',
+  'Bodoni Moda': 'Bodoni+Moda:ital,wght@0,400;0,700;1,400',
+  'Josefin Sans': 'Josefin+Sans:wght@300;400;600;700',
+  'DM Sans': 'DM+Sans:wght@300;400;500;700',
+  'Raleway': 'Raleway:wght@300;400;600;700',
+  'Tenor Sans': 'Tenor+Sans',
+  'Cinzel': 'Cinzel:wght@400;700;900',
+  'Bebas Neue': 'Bebas+Neue',
+  'Italiana': 'Italiana',
+  'Forum': 'Forum',
+  'Dancing Script': 'Dancing+Script:wght@400;700',
+  'Great Vibes': 'Great+Vibes',
+  'Sacramento': 'Sacramento',
+  'Parisienne': 'Parisienne',
+  'Anton': 'Anton',
+  'Barlow Condensed': 'Barlow+Condensed:wght@400;600;700',
+  'Oswald': 'Oswald:wght@400;600;700',
+  'Rajdhani': 'Rajdhani:wght@400;600;700',
+  'Teko': 'Teko:wght@400;600;700',
+  'Russo One': 'Russo+One',
+  'Big Shoulders Display': 'Big+Shoulders+Display:wght@400;700;900',
+  'DM Mono': 'DM+Mono:wght@400;500',
+  'Space Mono': 'Space+Mono:wght@400;700',
+  'IBM Plex Mono': 'IBM+Plex+Mono:wght@400;700',
+  'Roboto Mono': 'Roboto+Mono:wght@400;700',
+  'Yatra One': 'Yatra+One',
+  'Tiro Devanagari Latin': 'Tiro+Devanagari+Latin',
+  'Noto Serif Devanagari': 'Noto+Serif+Devanagari',
+  'Hind': 'Hind:wght@400;600;700',
+};
+
+// ─── QUICK TEXT STYLES ───────────────────────────────────────────────────────────
+export const QUICK_STYLES_WEDDING = [
+  {
+    id: 'romantic-quote',
+    label: 'Romantic Quote',
+    style: { font: 'Cormorant Garamond', size: 52, color: '#FFFFFF', align: 'center', letterSpacing: 3, italic: true, shadow: true, opacity: 1 },
+  },
+  {
+    id: 'elegant-caption',
+    label: 'Elegant Caption',
+    style: { font: 'Josefin Sans', size: 28, color: '#FFFFFF', align: 'center', letterSpacing: 6, transform: 'uppercase', opacity: 0.8 },
+  },
+  {
+    id: 'editorial-overlay',
+    label: 'Editorial Overlay',
+    style: { font: 'Cinzel', size: 64, color: '#FFFFFF', align: 'center', transform: 'uppercase', letterSpacing: 10 },
+  },
+  {
+    id: 'date-location',
+    label: 'Date / Location',
+    style: { font: 'DM Sans', size: 22, color: '#FFFFFF', align: 'center', opacity: 0.7 },
+  },
+];
+
+export const QUICK_STYLES_SPORTS = [
+  {
+    id: 'player-name',
+    label: 'Player Name Card',
+    style: { font: 'Bebas Neue', size: 96, color: '#FFFFFF', letterSpacing: 8, transform: 'uppercase', shadow: true },
+  },
+  {
+    id: 'stat-block',
+    label: 'Stat Block',
+    style: { font: 'DM Mono', size: 48, color: '#FFFFFF', transform: 'uppercase' },
+  },
+  {
+    id: 'match-result',
+    label: 'Match Result',
+    style: { font: 'Russo One', size: 72, color: '#FFFFFF', align: 'center', transform: 'uppercase' },
+  },
+  {
+    id: 'caption-strip',
+    label: 'Caption Strip',
+    style: { font: 'Barlow Condensed', size: 32, color: '#FFFFFF', opacity: 0.8 },
+  },
+  {
+    id: 'team-name',
+    label: 'Team Name',
+    style: { font: 'Anton', size: 56, color: '#00A8FF', transform: 'uppercase' },
+  },
+  {
+    id: 'hashtag-strip',
+    label: 'Hashtag Strip',
+    style: { font: 'DM Sans', size: 24, color: '#FFFFFF', opacity: 0.6, transform: 'lowercase' },
+  },
+];
+
+// ─── TEXT COLOR PRESETS ──────────────────────────────────────────────────────────
+export const TEXT_COLOR_PRESETS = [
+  { color: '#FFFFFF', label: 'White' },
+  { color: '#000000', label: 'Black' },
+  { color: '#F5F0E8', label: 'Cream' },
+  { color: '#2C2C2C', label: 'Charcoal' },
+  { color: '#C9A96E', label: 'Gold' },
+  { color: '#00A8FF', label: 'Electric Blue' },
+  { color: '#E63946', label: 'Red' },
+];
+
+// ─── DEFAULT SLIDE ────────────────────────────────────────────────────────────────
+export function createDefaultSlide(id) {
+  return {
+    id,
+    templateId: 'full-bleed',
+    ratio: '1:1',
+    photoAssignments: {},
+    textBlocks: [],
+    presets: {},
+    globalPreset: 'natural',
+    borderSettings: {
+      innerBorder: 'none',
+      gutter: 4,
+      gutterColor: '#000000',
+      bgColor: '#000000',
+      vignette: false,
+    },
+    logoSettings: {
+      enabled: false,
+      x: 0.85,
+      y: 0.9,
+      scale: 0.15,
+      opacity: 1,
+    },
+    zoom: { x: {}, y: {}, scale: {} },
+  };
+}
+
+export function createDefaultTextBlock(id, accentColor) {
+  return {
+    id,
+    text: 'Your Text Here',
+    x: 50,
+    y: 50,
+    font: 'DM Sans',
+    size: 36,
+    color: '#FFFFFF',
+    align: 'center',
+    opacity: 1,
+    letterSpacing: 0,
+    lineHeight: 1.2,
+    transform: 'none',
+    bold: false,
+    italic: false,
+    shadow: false,
+    shadowIntensity: 4,
+    bgPill: false,
+    width: 400,
+  };
+}
