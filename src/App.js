@@ -151,6 +151,25 @@ export default function App() {
     });
   }, [currentSlideIdx]);
 
+  const resetAllEffects = useCallback(() => {
+    if (!window.confirm('Reset all color presets and border effects on every slide?')) return;
+    setSlides(prev => {
+      historyRef.current = [...historyRef.current.slice(-29), prev];
+      return prev.map(sl => ({
+        ...sl,
+        globalPreset: 'natural',
+        presets: {},
+        borderSettings: {
+          gutter: sl.borderSettings?.gutter ?? 4,
+          bgColor: '#FFFFFF',
+          gutterColor: '#FFFFFF',
+          innerBorder: 'none',
+          vignette: false,
+        },
+      }));
+    });
+  }, []);
+
   const applyTemplate = useCallback((templateId) => {
     const tmplObj = getTemplate(templateId, TEMPLATE_CATEGORIES);
     const newSlots = tmplObj?.slots || 1;
@@ -321,6 +340,7 @@ export default function App() {
         exportProgress={exportProgress}
         onAddText={addTextBlock}
         onBrandKit={() => setShowBrandKit(true)}
+        onResetAllEffects={resetAllEffects}
       />
 
       <div className="flex flex-1 overflow-hidden">

@@ -175,19 +175,19 @@ export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpda
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'thin' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
           {filteredPresets.map(preset => {
             const hasGrad = !!preset.style.gradient;
             return (
               <button key={preset.id} onClick={() => handlePreset(preset)}
                 title={`${preset.label} — click to ${tb ? 'apply style' : 'add to canvas'}`}
-                style={{ flexShrink: 0, width: 68, height: 48, background: '#111', border: '1px solid #252525', borderRadius: 3, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, overflow: 'hidden', padding: '3px 4px', transition: 'border-color 120ms' }}
+                style={{ height: 52, background: '#111', border: '1px solid #252525', borderRadius: 3, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, overflow: 'hidden', padding: '3px 4px', transition: 'border-color 120ms' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = accentColor + '88'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#252525'}
               >
                 <span style={{
                   fontFamily: `"${preset.preview}", sans-serif`,
-                  fontSize: 14,
+                  fontSize: 15,
                   color: hasGrad ? 'transparent' : (preset.style.color || '#FFF'),
                   background: hasGrad ? `linear-gradient(${preset.style.gradient.angle}deg, ${preset.style.gradient.stops.join(', ')})` : 'none',
                   WebkitBackgroundClip: hasGrad ? 'text' : 'unset',

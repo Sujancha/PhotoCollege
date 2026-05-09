@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Download, ChevronDown, Layers, Type, Package } from 'lucide-react';
+import { Download, ChevronDown, Layers, Type, Package, RotateCcw } from 'lucide-react';
 import { RATIOS } from '../constants';
 
 export default function TopBar({
   mode, setMode, currentRatio, setCurrentRatio, accentColor,
   onExportCurrent, onExportAll, onExportTikTok, exporting, exportProgress,
-  onAddText, onBrandKit,
+  onAddText, onBrandKit, onResetAllEffects,
 }) {
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -77,6 +77,24 @@ export default function TopBar({
       </div>
 
       <div className="flex-1" />
+
+      {/* Reset All Effects */}
+      <button
+        onClick={onResetAllEffects}
+        title="Reset all color presets and border effects on all slides"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded btn-hover"
+        style={{
+          background: '#1A1A1A',
+          border: '1px solid #2A2A2A',
+          color: '#666',
+          cursor: 'pointer',
+          fontFamily: 'DM Sans, sans-serif',
+          fontSize: 12,
+        }}
+      >
+        <RotateCcw size={13} />
+        Reset
+      </button>
 
       {/* Add Text */}
       <button
