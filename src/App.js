@@ -52,6 +52,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slides.length, currentSlideIdx]);
 
   const { exporting, exportProgress, exportCurrentSlide, exportAllSlides, exportTikTok } = useExport(
