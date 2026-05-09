@@ -39,17 +39,76 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, preset
   const [isPanning, setIsPanning] = useState(false);
   const divRef = useRef();
 
-  // Non-passive wheel listener so we can prevent page scroll while zooming
+  // Keep a ref to current pan/selection state so touch handlers don't go stale
+  const touchStateRef = useRef({ isSelected, hasPhoto: !!photo?.url, panX, panY });
+  useEffect(() => {
+    touchStateRef.current = { isSelected, hasPhoto: !!photo?.url, panX, panY };
+  });
+
+  // Non-passive wheel + touch pinch/pan listeners
   useEffect(() => {
     const el = divRef.current;
     if (!el) return;
-    const handler = (e) => {
+
+    // Wheel zoom (desktop)
+    const handleWheel = (e) => {
       e.preventDefault();
       onZoomDelta(zoneKey, e.deltaY);
     };
-    el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
-  }, [zoneKey, onZoomDelta]);
+
+    // Touch pinch-to-zoom + single-finger pan
+    const getTouchDist = (touches) => {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
+    };
+    let lastPinchDist = null;
+    let touchPanStart = null;
+
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        lastPinchDist = getTouchDist(e.touches);
+        touchPanStart = null;
+      } else if (e.touches.length === 1) {
+        const { isSelected: sel, hasPhoto } = touchStateRef.current;
+        if (sel && hasPhoto) {
+          const { panX: px, panY: py } = touchStateRef.current;
+          touchPanStart = { tx: e.touches[0].clientX, ty: e.touches[0].clientY, px, py };
+        }
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length === 2 && lastPinchDist !== null) {
+        e.preventDefault();
+        const newDist = getTouchDist(e.touches);
+        const delta = -(newDist - lastPinchDist) * 1.5;
+        onZoomDelta(zoneKey, delta);
+        lastPinchDist = newDist;
+      } else if (e.touches.length === 1 && touchPanStart) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - touchPanStart.tx;
+        const dy = e.touches[0].clientY - touchPanStart.ty;
+        onPan(zoneKey, touchPanStart.px + dx, touchPanStart.py + dy);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      lastPinchDist = null;
+      touchPanStart = null;
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [zoneKey, onZoomDelta, onPan]);
 
   // Mouse drag to pan (only when zone already selected)
   const handleMouseDown = useCallback((e) => {
