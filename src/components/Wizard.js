@@ -1,12 +1,11 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, Upload, Check } from 'lucide-react';
-import { RATIOS, TEMPLATE_CATEGORIES, VIBES, VIBE_TEMPLATE_ORDER, MAX_PHOTOS } from '../constants';
+import { RATIOS, TEMPLATE_CATEGORIES, MAX_PHOTOS } from '../constants';
 import { generateId, computeZones } from '../utils';
 
 loadGoogleFont('Cormorant Garamond');
 
 function loadGoogleFont(name) {
-  // Minimal inline version for Wizard's own use
   const id = `gfont-${name.replace(/\s/g, '-')}`;
   if (!document.getElementById(id)) {
     const link = document.createElement('link');
@@ -30,7 +29,6 @@ function ZonePreview({ tmpl, w = 52, h = 52 }) {
 
 const STEP_TITLES = [
   'What are you shooting?',
-  "What's the vibe?",
   'Upload your photos',
   'Choose aspect ratio',
   'Pick a layout for slide 1',
@@ -39,23 +37,14 @@ const STEP_TITLES = [
 export default function Wizard({ onComplete, initialPhotos = [], accentColor }) {
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState(null);
-  const [vibe, setVibe] = useState(null);
   const [photos, setPhotos] = useState(initialPhotos);
   const [ratio, setRatio] = useState('4:5');
   const [templateId, setTemplateId] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef();
 
-  const vibeList = mode ? VIBES[mode] : [];
-  const sortedCategories = vibe && VIBE_TEMPLATE_ORDER[vibe]
-    ? [...TEMPLATE_CATEGORIES].sort((a, b) => {
-        const order = VIBE_TEMPLATE_ORDER[vibe];
-        const ai = order.indexOf(a.id); const bi = order.indexOf(b.id);
-        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-      })
-    : TEMPLATE_CATEGORIES;
-
-  const canNext = [!!mode, !!vibe, photos.length > 0, !!ratio, !!templateId][step];
+  // canNext indexed by step
+  const canNext = [!!mode, photos.length > 0, !!ratio, !!templateId][step];
 
   const processFiles = useCallback((files) => {
     const valid = ['image/jpeg', 'image/png', 'image/webp'];
@@ -75,11 +64,8 @@ export default function Wizard({ onComplete, initialPhotos = [], accentColor }) 
     });
   }, []);
 
-  const next = () => setStep(s => Math.min(4, s + 1));
-  const back = () => {
-    setStep(s => Math.max(0, s - 1));
-    if (step === 1) setVibe(null); // clear vibe when going back to mode
-  };
+  const next = () => setStep(s => Math.min(3, s + 1));
+  const back = () => setStep(s => Math.max(0, s - 1));
 
   return (
     <div style={{
@@ -119,7 +105,7 @@ export default function Wizard({ onComplete, initialPhotos = [], accentColor }) 
               { id: 'sports',  label: 'Sports & Action',  sub: 'Teams · Athletes · Highlights',   icon: '⚡' },
             ].map(m => (
               <button key={m.id}
-                onClick={() => { setMode(m.id); setVibe(null); next(); }}
+                onClick={() => { setMode(m.id); next(); }}
                 style={{ flex: 1, padding: '28px 16px', background: '#111', border: `1px solid ${mode === m.id ? accentColor : '#252525'}`, borderRadius: 5, cursor: 'pointer', textAlign: 'center', transition: 'border-color 150ms' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = accentColor + '88'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = mode === m.id ? accentColor : '#252525'}
@@ -132,26 +118,8 @@ export default function Wizard({ onComplete, initialPhotos = [], accentColor }) 
           </div>
         )}
 
-        {/* Step 1: Vibe */}
+        {/* Step 1: Photos */}
         {step === 1 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {vibeList.map(v => (
-              <button key={v.id}
-                onClick={() => setVibe(v.id)}
-                style={{ padding: '13px 18px', background: vibe === v.id ? '#1A1A1A' : '#111', border: `1px solid ${vibe === v.id ? accentColor : '#252525'}`, borderRadius: 3, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', transition: 'border-color 150ms' }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = accentColor + '88'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = vibe === v.id ? accentColor : '#252525'}
-              >
-                <span style={{ fontSize: 20, lineHeight: 1 }}>{v.icon}</span>
-                <span style={{ fontSize: 14, color: '#E0E0E0' }}>{v.label}</span>
-                {vibe === v.id && <Check size={13} style={{ color: accentColor, marginLeft: 'auto' }} />}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Step 2: Photos */}
-        {step === 2 && (
           <div>
             <div
               style={{ border: `2px dashed ${dragOver ? accentColor : '#2A2A2A'}`, borderRadius: 4, padding: '22px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', background: dragOver ? accentColor + '08' : 'transparent', transition: 'all 150ms', marginBottom: 14 }}
@@ -193,8 +161,8 @@ export default function Wizard({ onComplete, initialPhotos = [], accentColor }) 
           </div>
         )}
 
-        {/* Step 3: Ratio */}
-        {step === 3 && (
+        {/* Step 2: Ratio */}
+        {step === 2 && (
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             {RATIOS.map(r => {
               const aspect = r.w / r.h;
@@ -218,10 +186,10 @@ export default function Wizard({ onComplete, initialPhotos = [], accentColor }) 
           </div>
         )}
 
-        {/* Step 4: Template */}
-        {step === 4 && (
+        {/* Step 3: Template */}
+        {step === 3 && (
           <div style={{ maxHeight: 360, overflowY: 'auto', scrollbarWidth: 'thin' }}>
-            {sortedCategories.map(cat => (
+            {TEMPLATE_CATEGORIES.map(cat => (
               <div key={cat.id} style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 8 }}>{cat.label}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
@@ -259,14 +227,14 @@ export default function Wizard({ onComplete, initialPhotos = [], accentColor }) 
           </button>
         )}
 
-        {step < 4 ? (
+        {step < 3 ? (
           <button onClick={next} disabled={!canNext}
             style={{ padding: '9px 26px', background: canNext ? accentColor : '#181818', border: `1px solid ${canNext ? accentColor : '#252525'}`, color: canNext ? '#000' : '#383838', cursor: canNext ? 'pointer' : 'default', borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, transition: 'all 150ms' }}
           >
             Continue <ArrowRight size={13} />
           </button>
         ) : (
-          <button onClick={() => canNext && onComplete({ mode, vibe, photos, ratio, templateId })} disabled={!canNext}
+          <button onClick={() => canNext && onComplete({ mode, photos, ratio, templateId })} disabled={!canNext}
             style={{ padding: '10px 28px', background: canNext ? accentColor : '#181818', border: `1px solid ${canNext ? accentColor : '#252525'}`, color: canNext ? '#000' : '#383838', cursor: canNext ? 'pointer' : 'default', borderRadius: 3, display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, transition: 'all 150ms' }}
           >
             <Check size={14} /> Start Creating

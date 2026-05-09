@@ -18,7 +18,7 @@ loadGoogleFont('DM Sans');
 
 export default function App() {
   const [mode, setMode] = useState('wedding');
-  const [vibe, setVibe] = useState(null);
+
   const [currentRatio, setCurrentRatio] = useState('1:1');
   const [slides, setSlides] = useState(() => [createDefaultSlide(generateId())]);
   const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
@@ -75,8 +75,9 @@ export default function App() {
       if (e.key === 'ArrowLeft') setCurrentSlideIdx(i => Math.max(0, i - 1));
       if (e.key === 'ArrowRight') setCurrentSlideIdx(i => Math.min(slides.length - 1, i + 1));
       if (e.key === 'Escape') { setSelectedZone(null); setSelectedTextId(null); }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTextId) {
-        e.preventDefault(); deleteTextBlock(selectedTextId);
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedTextId) { e.preventDefault(); deleteTextBlock(selectedTextId); }
+        else if (selectedZone) { e.preventDefault(); unassignZone(selectedZone); }
       }
     };
     window.addEventListener('keydown', handler);
@@ -97,9 +98,8 @@ export default function App() {
   }, []);
 
   // ── Wizard completion ─────────────────────────────────────────────────────────
-  const handleWizardComplete = useCallback(({ mode: m, vibe: v, photos: p, ratio: r, templateId: t }) => {
+  const handleWizardComplete = useCallback(({ mode: m, photos: p, ratio: r, templateId: t }) => {
     setMode(m);
-    setVibe(v);
     setCurrentRatio(r);
     setPhotos(p);
     p.forEach(photo => savePhoto(photo));
@@ -187,6 +187,12 @@ export default function App() {
 
   const assignPhotoToZone = useCallback((zoneKey, photoId) => {
     updateCurrentSlide({ photoAssignments: { ...currentSlide.photoAssignments, [zoneKey]: photoId } });
+  }, [currentSlide, updateCurrentSlide]);
+
+  const unassignZone = useCallback((zoneKey) => {
+    const pa = { ...currentSlide.photoAssignments };
+    delete pa[zoneKey];
+    updateCurrentSlide({ photoAssignments: pa });
   }, [currentSlide, updateCurrentSlide]);
 
   const flipPhotoInZone = useCallback((zoneKey) => {
@@ -283,6 +289,7 @@ export default function App() {
           onReorder={reorderPhotos}
           onRemove={removePhoto}
           onAssignToZone={assignPhotoToZone}
+          onUnassignFromZone={unassignZone}
           selectedZone={selectedZone}
           accentColor={accentColor}
           currentSlide={currentSlide}
@@ -361,7 +368,7 @@ export default function App() {
           onAdd={handleAddSlide}
           onClose={() => setShowAddSlide(false)}
           defaultRatio={displayRatio}
-          vibe={vibe}
+          vibe={null}
           accentColor={accentColor}
         />
       )}

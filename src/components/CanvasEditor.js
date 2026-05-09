@@ -5,7 +5,7 @@ import { getTemplate, computeZones } from '../utils';
 const ALL_PRESETS = [...WEDDING_PRESETS, ...SPORTS_PRESETS];
 
 // ─── PHOTO ZONE ──────────────────────────────────────────────────────────────────
-function PhotoZone({ zone, zoneKey, zoneIndex, photo, preset, accentColor, isSelected,
+function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, accentColor, isSelected,
   onClick, onWheel, flipH, panX, panY, photoScale, onPan, onZoneDragStart, onZoneDrop }) {
 
   const presetObj = ALL_PRESETS.find(p => p.id === preset);
@@ -96,13 +96,11 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photo, preset, accentColor, isSel
             position: 'absolute',
             top: '50%',
             left: '50%',
-            // Cover: min-width/height 100% ensures the image always fills the zone
-            minWidth: '100%',
-            minHeight: '100%',
+            // Contain: show full photo by default; user can scroll-to-zoom to fill
             width: 'auto',
             height: 'auto',
-            maxWidth: 'none',
-            maxHeight: 'none',
+            maxWidth: '100%',
+            maxHeight: '100%',
             // Transform: center → pan → zoom → flip
             transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${photoScale || 1}) ${flipH ? 'scaleX(-1)' : ''}`,
             transformOrigin: 'center center',
@@ -122,14 +120,17 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photo, preset, accentColor, isSel
       )}
 
       {/* Zone label */}
+      {/* Zone label: shows assigned photo number or slot number */}
       <div style={{
         position: 'absolute', top: 4, left: 4, zIndex: 3,
-        background: 'rgba(0,0,0,0.55)', color: '#555',
+        background: photoIndex >= 0 ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.45)',
+        color: photoIndex >= 0 ? '#aaa' : '#444',
         fontSize: 8, fontFamily: 'DM Mono, monospace',
         padding: '1px 4px', borderRadius: 2, pointerEvents: 'none',
-        opacity: isSelected ? 0 : 0.6,
+        opacity: isSelected ? 0 : 1,
+        transition: 'opacity 150ms',
       }}>
-        Z{zoneIndex + 1}
+        {photoIndex >= 0 ? `#${photoIndex + 1}` : `Z${zoneIndex + 1}`}
       </div>
 
       {/* Reframe hint */}
@@ -375,6 +376,7 @@ export default function CanvasEditor({
           const zoneKey = `zone-${i}`;
           const photoId = slide.photoAssignments?.[zoneKey];
           const photo = photos.find(p => p.id === photoId);
+          const photoIndex = photoId ? photos.findIndex(p => p.id === photoId) : -1;
           const presetId = slide.presets?.[zoneKey] || slide.globalPreset || 'natural';
           const scaledZone = {
             x: zone.x * displayScale, y: zone.y * displayScale,
@@ -386,6 +388,7 @@ export default function CanvasEditor({
               zone={scaledZone}
               zoneKey={zoneKey}
               zoneIndex={i}
+              photoIndex={photoIndex}
               photo={photo}
               preset={presetId}
               accentColor={accentColor}

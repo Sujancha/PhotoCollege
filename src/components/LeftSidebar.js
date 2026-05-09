@@ -1,11 +1,19 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { Upload, ImageIcon } from 'lucide-react';
 import { generateId } from '../utils';
 import { MAX_PHOTOS } from '../constants';
 
-function PhotoThumb({ photo, index, zoneLabel, onRemove, onDragStart, onDrop, accentColor, onClick, isSelected }) {
+function PhotoThumb({ photo, index, zoneLabel, onRemove, onDragStart, onDrop, accentColor, onClick, isInSelectedZone, isAssigned }) {
   const [dragging, setDragging] = useState(false);
   const [dropOver, setDropOver] = useState(false);
+
+  const borderColor = dropOver
+    ? accentColor
+    : isInSelectedZone
+      ? accentColor
+      : isAssigned
+        ? accentColor + '55'
+        : '#2A2A2A';
 
   return (
     <div
@@ -23,13 +31,13 @@ function PhotoThumb({ photo, index, zoneLabel, onRemove, onDragStart, onDrop, ac
       onClick={() => onClick(photo)}
       style={{
         position: 'relative',
-        cursor: 'grab',
+        cursor: 'pointer',
         opacity: dragging ? 0.3 : 1,
         borderRadius: 2,
         overflow: 'hidden',
-        border: `1px solid ${dropOver ? accentColor : isSelected ? accentColor + '99' : '#2A2A2A'}`,
+        border: `1px solid ${borderColor}`,
         background: '#111',
-        boxShadow: dropOver ? `0 0 0 2px ${accentColor}44` : 'none',
+        boxShadow: dropOver ? `0 0 0 2px ${accentColor}44` : isInSelectedZone ? `0 0 0 2px ${accentColor}33` : 'none',
         transition: 'border-color 120ms, box-shadow 120ms',
       }}
     >
@@ -39,7 +47,19 @@ function PhotoThumb({ photo, index, zoneLabel, onRemove, onDragStart, onDrop, ac
           alt={photo.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
-        {/* Zone badge */}
+
+        {/* Photo number badge — top left */}
+        <div style={{
+          position: 'absolute', top: 3, left: 3,
+          background: 'rgba(0,0,0,0.72)', color: '#888',
+          fontSize: 8, fontFamily: 'DM Mono, monospace',
+          fontWeight: 700, padding: '1px 4px', borderRadius: 2,
+          lineHeight: 1.4,
+        }}>
+          {index + 1}
+        </div>
+
+        {/* Zone badge — bottom left (which canvas slot this photo is in) */}
         {zoneLabel && (
           <div style={{
             position: 'absolute', bottom: 3, left: 3,
@@ -57,7 +77,7 @@ function PhotoThumb({ photo, index, zoneLabel, onRemove, onDragStart, onDrop, ac
           {photo.name.replace(/\.[^.]+$/, '')}
         </div>
       </div>
-      {/* Remove on hover */}
+      {/* Remove button */}
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(photo.id); }}
         style={{
@@ -73,7 +93,7 @@ function PhotoThumb({ photo, index, zoneLabel, onRemove, onDragStart, onDrop, ac
   );
 }
 
-export default function LeftSidebar({ photos, onPhotosAdded, onReorder, onRemove, onAssignToZone, selectedZone, accentColor, currentSlide }) {
+export default function LeftSidebar({ photos, onPhotosAdded, onReorder, onRemove, onAssignToZone, onUnassignFromZone, selectedZone, accentColor, currentSlide }) {
   const fileInput = useRef();
   const [dragOver, setDragOver] = useState(false);
   const [dragFromIdx, setDragFromIdx] = useState(null);
@@ -103,17 +123,38 @@ export default function LeftSidebar({ photos, onPhotosAdded, onReorder, onRemove
     if (e.dataTransfer.files?.length) processFiles(e.dataTransfer.files);
   }, [processFiles]);
 
-  const handleClick = useCallback((photo) => {
-    if (selectedZone) onAssignToZone(selectedZone, photo.id);
-  }, [selectedZone, onAssignToZone]);
+  // Build maps: photoId → zoneKey, photoId → zone label
+  const assignments = useMemo(() => currentSlide?.photoAssignments || {}, [currentSlide?.photoAssignments]);
+  const { photoZoneMap, photoZoneKey } = useMemo(() => {
+    const map = {};   // photoId → "Z1"
+    const key = {};   // photoId → "zone-0"
+    Object.entries(assignments).forEach(([zoneKey, photoId]) => {
+      const idx = parseInt(zoneKey.replace('zone-', ''), 10);
+      map[photoId] = `Z${idx + 1}`;
+      key[photoId] = zoneKey;
+    });
+    return { photoZoneMap: map, photoZoneKey: key };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSlide?.photoAssignments]);
 
-  // Build a map: photoId → zone label (e.g. "Z1")
-  const assignments = currentSlide?.photoAssignments || {};
-  const photoZoneMap = {};
-  Object.entries(assignments).forEach(([zoneKey, photoId]) => {
-    const idx = parseInt(zoneKey.replace('zone-', ''), 10);
-    photoZoneMap[photoId] = `Z${idx + 1}`;
-  });
+  const handleClick = useCallback((photo) => {
+    const assignedZone = photoZoneKey[photo.id];
+
+    if (selectedZone) {
+      if (assignments[selectedZone] === photo.id) {
+        // Photo is already in the selected zone → unassign it
+        onUnassignFromZone(selectedZone);
+      } else {
+        // Assign to selected zone
+        onAssignToZone(selectedZone, photo.id);
+      }
+    } else if (assignedZone) {
+      // No zone selected but photo is in a zone → unassign
+      onUnassignFromZone(assignedZone);
+    }
+  }, [selectedZone, assignments, photoZoneKey, onAssignToZone, onUnassignFromZone]);
+
+  const zoneNumber = selectedZone ? parseInt(selectedZone.replace('zone-', ''), 10) + 1 : null;
 
   return (
     <div className="flex flex-col flex-shrink-0" style={{ width: 220, background: '#141414', borderRight: '1px solid #222', overflow: 'hidden' }}>
@@ -156,8 +197,8 @@ export default function LeftSidebar({ photos, onPhotosAdded, onReorder, onRemove
       {photos.length > 0 && (
         <div style={{ padding: '0 10px 6px', fontSize: 9, color: '#3A3A3A', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5 }}>
           {selectedZone
-            ? <span style={{ color: accentColor }}>↗ Click a photo to place it in {selectedZone.replace('zone-', 'Zone ')}</span>
-            : 'Drag photos onto canvas zones, or click a zone first then click a photo.'}
+            ? <span style={{ color: accentColor }}>Zone {zoneNumber} selected — click a photo to place it</span>
+            : 'Click a canvas zone, then click a photo to assign. Click an assigned photo to remove it.'}
         </div>
       )}
 
@@ -182,7 +223,8 @@ export default function LeftSidebar({ photos, onPhotosAdded, onReorder, onRemove
                 onDragStart={setDragFromIdx}
                 onDrop={(toIdx) => { if (dragFromIdx !== null && dragFromIdx !== toIdx) onReorder(dragFromIdx, toIdx); setDragFromIdx(null); }}
                 accentColor={accentColor}
-                isSelected={!!selectedZone && assignments[selectedZone] === photo.id}
+                isInSelectedZone={!!selectedZone && assignments[selectedZone] === photo.id}
+                isAssigned={!!photoZoneMap[photo.id]}
                 onClick={handleClick}
               />
             ))}
