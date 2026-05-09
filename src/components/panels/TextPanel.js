@@ -1,7 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Trash2, ChevronDown, ChevronRight, Bold, Italic, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
-import { FONT_BUCKETS, TEXT_COLOR_PRESETS, QUICK_STYLES_WEDDING, QUICK_STYLES_SPORTS, TEXT_PRESETS } from '../../constants';
-import { loadGoogleFont } from '../../utils';
+import { FONT_BUCKETS, TEXT_COLOR_PRESETS, TEXT_PRESETS, TEMPLATE_CATEGORIES } from '../../constants';
+import { loadGoogleFont, computeZones } from '../../utils';
+
+function MiniZonePreview({ tmpl, w = 44, h = 44 }) {
+  const zones = tmpl?.zones ? computeZones(tmpl, w, h, 2) : [];
+  return (
+    <div style={{ width: w, height: h, background: '#0A0A0A', position: 'relative', overflow: 'hidden', borderRadius: 2, flexShrink: 0 }}>
+      {zones.map((z, i) => (
+        <div key={i} style={{ position: 'absolute', left: z.x, top: z.y, width: z.w, height: z.h, background: '#2A2A2A', borderRadius: 1 }} />
+      ))}
+    </div>
+  );
+}
 
 const GRADIENT_PRESETS = [
   { label: 'Gold',   angle: 135, stops: ['#C9A96E', '#F5E6C8', '#C9A96E'] },
@@ -62,12 +73,11 @@ function Slider({ label, value, min, max, step = 1, onChange, unit = '' }) {
   );
 }
 
-export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpdate, onDelete, onApplyQuickStyle, onAddWithStyle, accentColor }) {
+export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpdate, onDelete, onApplyQuickStyle, onAddWithStyle, onApplyTemplate, currentTemplateId, accentColor }) {
   const [showFonts, setShowFonts] = useState(false);
   const [expandedBucket, setExpandedBucket] = useState(null);
   const [presetFilter, setPresetFilter] = useState('all');
 
-  const quickStyles = mode === 'wedding' ? QUICK_STYLES_WEDDING : QUICK_STYLES_SPORTS;
 
   const orderedBuckets = [...FONT_BUCKETS].sort((a, b) => {
     if (mode === 'sports') {
@@ -147,17 +157,34 @@ export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpda
         </div>
       </div>
 
-      {/* ── No text selected ──────────────────────────── */}
+      {/* ── No text selected — show template picker ─── */}
       {!tb ? (
-        <div style={{ padding: '12px 10px' }}>
-          <div style={{ fontSize: 10, color: '#444', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5, marginBottom: 10 }}>
-            Select a text block on the canvas to edit, or click <strong style={{ color: '#666' }}>Add Text</strong> in the top bar.
+        <div style={{ padding: '10px 10px 0' }}>
+          <div style={{ fontSize: 9, color: '#3A3A3A', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5, marginBottom: 10 }}>
+            Select a text block to edit, or click <strong style={{ color: '#555' }}>Add Text</strong> in the top bar.
           </div>
-          <Label>Quick Styles</Label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {quickStyles.map(qs => (
-              <div key={qs.id} style={{ fontSize: 9, color: '#3A3A3A', fontFamily: 'DM Sans, sans-serif', padding: '5px 8px', background: '#111', borderRadius: 2, border: '1px solid #1A1A1A' }}>
-                {qs.label}
+          <Label>Layout Templates</Label>
+          <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 280px)' }}>
+            {TEMPLATE_CATEGORIES.map(cat => (
+              <div key={cat.id} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 8, color: '#444', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>{cat.label}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                  {cat.templates.map(tmpl => {
+                    const active = currentTemplateId === tmpl.id;
+                    return (
+                      <button key={tmpl.id} onClick={() => onApplyTemplate?.(tmpl.id)}
+                        style={{ padding: 6, background: active ? '#1E1E1E' : '#111', border: `1px solid ${active ? accentColor : '#222'}`, borderRadius: 2, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'border-color 120ms' }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = active ? accentColor : accentColor + '55'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = active ? accentColor : '#222'}
+                      >
+                        <MiniZonePreview tmpl={tmpl} />
+                        <span style={{ fontSize: 7, color: active ? accentColor : '#555', textAlign: 'center', lineHeight: 1.2, fontFamily: 'DM Sans, sans-serif' }}>
+                          {tmpl.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </div>
@@ -165,23 +192,6 @@ export default function TextPanel({ mode, selectedTextBlock, recentFonts, onUpda
       ) : (
         <div style={{ padding: '10px' }}>
 
-          {/* Quick styles */}
-          <div style={{ marginBottom: 10 }}>
-            <Label>Quick Styles</Label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {quickStyles.map(qs => (
-                <button key={qs.id} onClick={() => onApplyQuickStyle(qs.style)}
-                  style={{ textAlign: 'left', padding: '5px 8px', background: '#111', border: '1px solid #1E1E1E', color: '#777', cursor: 'pointer', borderRadius: 2, fontFamily: 'DM Sans, sans-serif', fontSize: 10 }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#1A1A1A'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#111'}
-                >
-                  {qs.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid #222', marginBottom: 10 }} />
 
           {/* Font */}
           <div style={{ marginBottom: 10 }}>

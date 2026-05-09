@@ -86,6 +86,8 @@ export default function RightSidebar({
             onDelete={onDeleteTextBlock}
             onApplyQuickStyle={onApplyQuickStyle}
             onAddWithStyle={onAddTextWithStyle}
+            onApplyTemplate={onApplyTemplate}
+            currentTemplateId={slide.templateId}
             accentColor={accentColor}
           />
         )}

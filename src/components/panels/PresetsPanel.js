@@ -29,12 +29,18 @@ function PresetSwatch({ preset, isActive, onClick, accentColor }) {
     <div
       className="preset-swatch flex flex-col items-center gap-1 cursor-pointer"
       onClick={onClick}
+      title={preset.vibe || preset.label}
       style={{ outline: isActive ? `2px solid ${accentColor}` : 'none', outlineOffset: 2, borderRadius: 2 }}
     >
       <div style={swatchStyle} />
       <span style={{ fontSize: 8, color: isActive ? accentColor : '#555', fontFamily: 'DM Sans, sans-serif', textAlign: 'center', maxWidth: 52, lineHeight: 1.2 }}>
         {preset.label}
       </span>
+      {preset.vibe && (
+        <span style={{ fontSize: 7, color: '#3A3A3A', fontFamily: 'DM Sans, sans-serif', textAlign: 'center', maxWidth: 52, lineHeight: 1.2 }}>
+          {preset.vibe}
+        </span>
+      )}
     </div>
   );
 }

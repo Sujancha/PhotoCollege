@@ -213,6 +213,82 @@ export const TEMPLATE_CATEGORIES = [
           { x: 0, y: 0, w, h, blendMode: 'multiply', opacity: 0.7 },
         ],
       },
+      {
+        id: 'letterbox',
+        label: 'Letterbox',
+        slots: 1,
+        zones: (w, h) => {
+          const barH = Math.round(h * 0.12);
+          return [{ x: 0, y: barH, w, h: h - barH * 2 }];
+        },
+        overlay: null,
+      },
+      {
+        id: 'mag-split',
+        label: 'Magazine Split',
+        slots: 1,
+        zones: (w, h) => [{ x: 0, y: 0, w: Math.round(w * 0.65), h }],
+        solidPanel: { color: '#0D0D0D', x: 0.65, textArea: true },
+      },
+      {
+        id: 'asymmetric-4',
+        label: 'Asymmetric 4',
+        slots: 4,
+        zones: (w, h, g = 4) => {
+          const lw = Math.round(w * 0.55);
+          const rw = w - lw - g;
+          const rh = (h - g * 2) / 3;
+          return [
+            { x: 0, y: 0, w: lw, h },
+            { x: lw + g, y: 0, w: rw, h: rh },
+            { x: lw + g, y: rh + g, w: rw, h: rh },
+            { x: lw + g, y: rh * 2 + g * 2, w: rw, h: rh },
+          ];
+        },
+      },
+      {
+        id: 'film-strip-5',
+        label: 'Film Strip (5)',
+        slots: 5,
+        zones: (w, h, g = 3) => {
+          const sw = (w - g * 4) / 5;
+          return Array.from({ length: 5 }, (_, i) => ({
+            x: i * (sw + g), y: 0, w: sw, h,
+          }));
+        },
+      },
+      {
+        id: 'panoramic-duo',
+        label: 'Panoramic Duo',
+        slots: 2,
+        zones: (w, h, g = 6) => {
+          const ph = (h - g) / 2;
+          return [
+            { x: 0, y: 0, w, h: ph },
+            { x: 0, y: ph + g, w, h: ph },
+          ];
+        },
+      },
+      {
+        id: 'editorial-mosaic',
+        label: 'Editorial Mosaic',
+        slots: 5,
+        zones: (w, h, g = 4) => {
+          const col1 = Math.round(w * 0.4);
+          const col2 = w - col1 - g;
+          const topH = Math.round(h * 0.55);
+          const botH = h - topH - g;
+          const c2w = (col2 - g) / 2;
+          const c2th = Math.round(topH * 0.5);
+          return [
+            { x: 0, y: 0, w: col1, h: topH },
+            { x: col1 + g, y: 0, w: c2w, h: c2th },
+            { x: col1 + g + c2w + g, y: 0, w: c2w, h: c2th },
+            { x: col1 + g, y: c2th + g, w: col2, h: topH - c2th - g },
+            { x: 0, y: topH + g, w, h: botH },
+          ];
+        },
+      },
     ],
   },
   {
@@ -354,71 +430,72 @@ export const TEMPLATE_CATEGORIES = [
 // ─── COLOR PRESETS ──────────────────────────────────────────────────────────────
 export const WEDDING_PRESETS = [
   // ── Base ──
-  { id: 'natural',          label: 'Natural',          filter: 'none' },
+  { id: 'natural',          label: 'Natural',          vibe: 'True to life',              filter: 'none' },
 
   // ── Film Emulation ──
-  { id: 'kodak-warm',       label: 'Kodak Warm',       filter: 'sepia(0.15) brightness(1.05) contrast(0.95) saturate(1.1)' },
-  { id: 'fuji-cool',        label: 'Fuji Cool',        filter: 'hue-rotate(5deg) saturate(0.9) brightness(1.08) contrast(1.05)' },
-  { id: 'kodak-portra',     label: 'Kodak Portra',     filter: 'sepia(0.1) brightness(1.08) contrast(0.92) saturate(1.05) hue-rotate(-3deg)' },
-  { id: 'cinematic-fade',   label: 'Cinematic Fade',   filter: 'brightness(1.1) contrast(0.85) saturate(0.8)' },
+  { id: 'kodak-warm',       label: 'Kodak Warm',       vibe: 'Nostalgic & warm',          filter: 'sepia(0.15) brightness(1.05) contrast(0.95) saturate(1.1)' },
+  { id: 'fuji-cool',        label: 'Fuji Cool',        vibe: 'Crisp & refined',           filter: 'hue-rotate(5deg) saturate(0.9) brightness(1.08) contrast(1.05)' },
+  { id: 'kodak-portra',     label: 'Kodak Portra',     vibe: 'Skin-friendly & timeless',  filter: 'sepia(0.1) brightness(1.08) contrast(0.92) saturate(1.05) hue-rotate(-3deg)' },
+  { id: 'cinematic-fade',   label: 'Cinematic Fade',   vibe: 'Soft & faded film look',    filter: 'brightness(1.1) contrast(0.85) saturate(0.8)' },
 
   // ── Wedding / Couple ──
-  { id: 'airy-light',       label: 'Airy & Light',     filter: 'brightness(1.2) contrast(0.9) saturate(0.85)' },
-  { id: 'pastel-soft',      label: 'Pastel Soft',      filter: 'brightness(1.15) contrast(0.88) saturate(0.75) sepia(0.08)' },
-  { id: 'champagne',        label: 'Champagne',        filter: 'brightness(1.25) contrast(0.82) saturate(0.65) sepia(0.1)' },
-  { id: 'golden-hour',      label: 'Golden Hour',      filter: 'sepia(0.28) saturate(1.35) brightness(1.1) hue-rotate(-12deg) contrast(0.95)' },
-  { id: 'rose-gold',        label: 'Rose Gold',        filter: 'hue-rotate(340deg) saturate(1.15) brightness(1.1) contrast(0.93) sepia(0.08)' },
-  { id: 'ethereal',         label: 'Ethereal White',   filter: 'brightness(1.35) contrast(0.78) saturate(0.6) sepia(0.05)' },
+  { id: 'airy-light',       label: 'Airy & Light',     vibe: 'Fresh & romantic',          filter: 'brightness(1.2) contrast(0.9) saturate(0.85)' },
+  { id: 'pastel-soft',      label: 'Pastel Soft',      vibe: 'Gentle & dreamy',           filter: 'brightness(1.15) contrast(0.88) saturate(0.75) sepia(0.08)' },
+  { id: 'champagne',        label: 'Champagne',        vibe: 'Luxe & overexposed',        filter: 'brightness(1.25) contrast(0.82) saturate(0.65) sepia(0.1)' },
+  { id: 'golden-hour',      label: 'Golden Hour',      vibe: 'Warm glow & magic light',   filter: 'sepia(0.28) saturate(1.35) brightness(1.1) hue-rotate(-12deg) contrast(0.95)' },
+  { id: 'rose-gold',        label: 'Rose Gold',        vibe: 'Blush & feminine warmth',   filter: 'hue-rotate(340deg) saturate(1.15) brightness(1.1) contrast(0.93) sepia(0.08)' },
+  { id: 'ethereal',         label: 'Ethereal White',   vibe: 'Angelic & high-key',        filter: 'brightness(1.35) contrast(0.78) saturate(0.6) sepia(0.05)' },
 
   // ── Dreamy ──
-  { id: 'dreamy-haze',      label: 'Dreamy Haze',      filter: 'brightness(1.28) contrast(0.8) saturate(0.65) sepia(0.06)' },
-  { id: 'cotton-candy',     label: 'Cotton Candy',     filter: 'hue-rotate(330deg) saturate(0.85) brightness(1.22) contrast(0.85)' },
-  { id: 'morning-mist',     label: 'Morning Mist',     filter: 'brightness(1.18) contrast(0.82) saturate(0.58) hue-rotate(5deg)' },
-  { id: 'velvet-dusk',      label: 'Velvet Dusk',      filter: 'brightness(0.88) contrast(1.15) saturate(1.12) hue-rotate(8deg)' },
+  { id: 'dreamy-haze',      label: 'Dreamy Haze',      vibe: 'Soft focus & fairytale',    filter: 'brightness(1.28) contrast(0.8) saturate(0.65) sepia(0.06)' },
+  { id: 'cotton-candy',     label: 'Cotton Candy',     vibe: 'Playful pastel pop',        filter: 'hue-rotate(330deg) saturate(0.85) brightness(1.22) contrast(0.85)' },
+  { id: 'morning-mist',     label: 'Morning Mist',     vibe: 'Cool & hazy dawn',          filter: 'brightness(1.18) contrast(0.82) saturate(0.58) hue-rotate(5deg)' },
+  { id: 'velvet-dusk',      label: 'Velvet Dusk',      vibe: 'Rich twilight mood',        filter: 'brightness(0.88) contrast(1.15) saturate(1.12) hue-rotate(8deg)' },
 
   // ── Moody / Editorial ──
-  { id: 'moody-dark',       label: 'Moody Dark',       filter: 'brightness(0.85) contrast(1.2) saturate(0.9)' },
-  { id: 'sunset-warm',      label: 'Sunset Warm',      filter: 'sepia(0.2) saturate(1.2) brightness(1.05) hue-rotate(-10deg)' },
-  { id: 'lush-greens',      label: 'Lush Greens',      filter: 'hue-rotate(12deg) saturate(1.2) brightness(1.02) contrast(1.06)' },
-  { id: 'overcast-blue',    label: 'Overcast Blue',    filter: 'hue-rotate(10deg) saturate(0.85) brightness(1.05)' },
-  { id: 'film-noir-mix',    label: 'Film Noir',        filter: 'grayscale(0.55) contrast(1.2) brightness(0.95) sepia(0.1)' },
+  { id: 'moody-dark',       label: 'Moody Dark',       vibe: 'Dramatic & intense',        filter: 'brightness(0.85) contrast(1.2) saturate(0.9)' },
+  { id: 'sunset-warm',      label: 'Sunset Warm',      vibe: 'Golden & emotional',        filter: 'sepia(0.2) saturate(1.2) brightness(1.05) hue-rotate(-10deg)' },
+  { id: 'lush-greens',      label: 'Lush Greens',      vibe: 'Outdoor & garden fresh',    filter: 'hue-rotate(12deg) saturate(1.2) brightness(1.02) contrast(1.06)' },
+  { id: 'overcast-blue',    label: 'Overcast Blue',    vibe: 'Calm & intimate grey',      filter: 'hue-rotate(10deg) saturate(0.85) brightness(1.05)' },
+  { id: 'film-noir-mix',    label: 'Film Noir',        filter: 'grayscale(0.55) contrast(1.2) brightness(0.95) sepia(0.1)',
+    vibe: 'Mysterious & editorial' },
 
   // ── Black & White ──
-  { id: 'clean-bw',         label: 'Clean B&W',        filter: 'grayscale(1) contrast(1.1)' },
-  { id: 'hc-bw',            label: 'Hi-Con B&W',       filter: 'grayscale(1) contrast(1.4) brightness(0.95)' },
-  { id: 'soft-bw',          label: 'Soft B&W',         filter: 'grayscale(1) contrast(0.9) brightness(1.1)' },
-  { id: 'selenium',         label: 'Selenium',         filter: 'grayscale(1) contrast(1.1) brightness(1.02) sepia(0.18)' },
+  { id: 'clean-bw',         label: 'Clean B&W',        vibe: 'Timeless & classic',        filter: 'grayscale(1) contrast(1.1)' },
+  { id: 'hc-bw',            label: 'Hi-Con B&W',       vibe: 'Bold contrast & drama',     filter: 'grayscale(1) contrast(1.4) brightness(0.95)' },
+  { id: 'soft-bw',          label: 'Soft B&W',         vibe: 'Gentle & nostalgic',        filter: 'grayscale(1) contrast(0.9) brightness(1.1)' },
+  { id: 'selenium',         label: 'Selenium',         vibe: 'Fine art darkroom',         filter: 'grayscale(1) contrast(1.1) brightness(1.02) sepia(0.18)' },
 ];
 
 export const SPORTS_PRESETS = [
   // ── Base ──
-  { id: 'natural',          label: 'Natural',          filter: 'none' },
+  { id: 'natural',          label: 'Natural',          vibe: 'True to life',              filter: 'none' },
 
   // ── Punchy / Action ──
-  { id: 'stadium-punch',    label: 'Stadium Punch',    filter: 'contrast(1.3) saturate(1.4) brightness(1.05)' },
-  { id: 'clean-bright',     label: 'Clean & Bright',   filter: 'brightness(1.1) contrast(1.1) saturate(1.15)' },
-  { id: 'golden-glory',     label: 'Golden Glory',     filter: 'sepia(0.15) saturate(1.35) brightness(1.08) contrast(1.15) hue-rotate(-10deg)' },
-  { id: 'action-red',       label: 'Action Red',       filter: 'hue-rotate(-8deg) saturate(1.5) contrast(1.25) brightness(1.02)' },
+  { id: 'stadium-punch',    label: 'Stadium Punch',    vibe: 'Vivid & electric energy',   filter: 'contrast(1.3) saturate(1.4) brightness(1.05)' },
+  { id: 'clean-bright',     label: 'Clean & Bright',   vibe: 'Sharp & professional',      filter: 'brightness(1.1) contrast(1.1) saturate(1.15)' },
+  { id: 'golden-glory',     label: 'Golden Glory',     vibe: 'Championship moment feel',  filter: 'sepia(0.15) saturate(1.35) brightness(1.08) contrast(1.15) hue-rotate(-10deg)' },
+  { id: 'action-red',       label: 'Action Red',       vibe: 'High-intensity & bold',     filter: 'hue-rotate(-8deg) saturate(1.5) contrast(1.25) brightness(1.02)' },
 
   // ── Cinematic ──
-  { id: 'warrior-grade',    label: 'Warrior Grade',    filter: 'hue-rotate(-15deg) saturate(1.3) contrast(1.2)' },
-  { id: 'netflix-doc',      label: 'Netflix Doc',      filter: 'hue-rotate(-20deg) saturate(1.2) contrast(1.18) brightness(0.97)' },
-  { id: 'teal-orange',      label: 'Teal & Orange',    filter: 'hue-rotate(-18deg) saturate(1.4) contrast(1.15) brightness(1.02)' },
+  { id: 'warrior-grade',    label: 'Warrior Grade',    vibe: 'Cinematic battle-ready',    filter: 'hue-rotate(-15deg) saturate(1.3) contrast(1.2)' },
+  { id: 'netflix-doc',      label: 'Netflix Doc',      vibe: 'Film documentary realism',  filter: 'hue-rotate(-20deg) saturate(1.2) contrast(1.18) brightness(0.97)' },
+  { id: 'teal-orange',      label: 'Teal & Orange',    vibe: 'Hollywood blockbuster',     filter: 'hue-rotate(-18deg) saturate(1.4) contrast(1.15) brightness(1.02)' },
 
   // ── Gritty / Raw ──
-  { id: 'bleach-bypass',    label: 'Bleach Bypass',    filter: 'saturate(0.3) contrast(1.4)' },
-  { id: 'dust-gravel',      label: 'Dust & Gravel',    filter: 'sepia(0.25) saturate(1.1) brightness(1.05) hue-rotate(-5deg)' },
-  { id: 'raw-earth',        label: 'Raw Earth',        filter: 'sepia(0.35) saturate(1.05) contrast(1.1) brightness(1.0) hue-rotate(-8deg)' },
+  { id: 'bleach-bypass',    label: 'Bleach Bypass',    vibe: 'Gritty desaturated punch',  filter: 'saturate(0.3) contrast(1.4)' },
+  { id: 'dust-gravel',      label: 'Dust & Gravel',    vibe: 'Raw outdoor & earthy',      filter: 'sepia(0.25) saturate(1.1) brightness(1.05) hue-rotate(-5deg)' },
+  { id: 'raw-earth',        label: 'Raw Earth',        vibe: 'Rugged & authentic feel',   filter: 'sepia(0.35) saturate(1.05) contrast(1.1) brightness(1.0) hue-rotate(-8deg)' },
 
   // ── Night / Indoor ──
-  { id: 'neon-night',       label: 'Neon Night',       filter: 'hue-rotate(10deg) saturate(1.2) brightness(1.1) contrast(1.15)' },
-  { id: 'ice-blue',         label: 'Ice Blue',         filter: 'hue-rotate(195deg) saturate(0.9) brightness(1.08) contrast(1.12)' },
-  { id: 'indoor-tungsten',  label: 'Indoor Tungsten',  filter: 'sepia(0.3) saturate(1.1) brightness(1.05) hue-rotate(-20deg) contrast(1.05)' },
+  { id: 'neon-night',       label: 'Neon Night',       vibe: 'Stadium lights & energy',   filter: 'hue-rotate(10deg) saturate(1.2) brightness(1.1) contrast(1.15)' },
+  { id: 'ice-blue',         label: 'Ice Blue',         vibe: 'Cool indoor arena glow',    filter: 'hue-rotate(195deg) saturate(0.9) brightness(1.08) contrast(1.12)' },
+  { id: 'indoor-tungsten',  label: 'Indoor Tungsten',  vibe: 'Warm court/gym lighting',   filter: 'sepia(0.3) saturate(1.1) brightness(1.05) hue-rotate(-20deg) contrast(1.05)' },
 
   // ── Black & White ──
-  { id: 'bw-impact',        label: 'B&W Impact',       filter: 'grayscale(1) contrast(1.5) brightness(0.9)' },
-  { id: 'bw-dramatic',      label: 'B&W Dramatic',     filter: 'grayscale(1) contrast(1.6) brightness(0.85) sepia(0.05)' },
-  { id: 'bw-clean-sport',   label: 'B&W Clean',        filter: 'grayscale(1) contrast(1.2) brightness(1.05)' },
+  { id: 'bw-impact',        label: 'B&W Impact',       vibe: 'Powerful & newspaper press',filter: 'grayscale(1) contrast(1.5) brightness(0.9)' },
+  { id: 'bw-dramatic',      label: 'B&W Dramatic',     vibe: 'Classic sports photography',filter: 'grayscale(1) contrast(1.6) brightness(0.85) sepia(0.05)' },
+  { id: 'bw-clean-sport',   label: 'B&W Clean',        vibe: 'Crisp editorial B&W',       filter: 'grayscale(1) contrast(1.2) brightness(1.05)' },
 ];
 
 // ─── FONTS ──────────────────────────────────────────────────────────────────────
@@ -642,8 +719,8 @@ export function createDefaultSlide(id) {
     borderSettings: {
       innerBorder: 'none',
       gutter: 4,
-      gutterColor: '#000000',
-      bgColor: '#000000',
+      gutterColor: '#FFFFFF',
+      bgColor: '#FFFFFF',
       vignette: false,
     },
     logoSettings: {
