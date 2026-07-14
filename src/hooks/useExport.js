@@ -64,8 +64,6 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
 
       const panX = (slide.zoom?.x?.[zoneKey] ?? 0) * scale;
       const panY = (slide.zoom?.y?.[zoneKey] ?? 0) * scale;
-      const dx = zone.x + (zone.w - dw) / 2 + panX;
-      const dy = zone.y + (zone.h - dh) / 2 + panY;
 
       // Draw base image (no filter)
       const drawImg = () => {

@@ -268,11 +268,6 @@ export default function App() {
     }));
   }, [currentSlide]);
 
-  const rotatePhotoInZone = useCallback((zoneKey) => {
-    const currentRotate = currentSlide.zoom?.rotate?.[zoneKey] || 0;
-    const nextRotate = (currentRotate + 90) % 360;
-    updateZoom(zoneKey, 'rotate', nextRotate);
-  }, [currentSlide, updateZoom]);
 
   const swapZonePhotos = useCallback((fromZone, toZone) => {
     const pa = { ...currentSlide.photoAssignments };
@@ -338,6 +333,12 @@ export default function App() {
     zoom[axis] = { ...zoom[axis], [zoneKey]: value };
     updateCurrentSlide({ zoom });
   }, [currentSlide, updateCurrentSlide]);
+
+  const rotatePhotoInZone = useCallback((zoneKey) => {
+    const currentRotate = currentSlide.zoom?.rotate?.[zoneKey] || 0;
+    const nextRotate = (currentRotate + 90) % 360;
+    updateZoom(zoneKey, 'rotate', nextRotate);
+  }, [currentSlide, updateZoom]);
 
   // Update x and y pan in one atomic write — avoids stale closure bug where
   // two separate updateZoom calls would have the second overwrite the first.
