@@ -289,6 +289,52 @@ export const TEMPLATE_CATEGORIES = [
           ];
         },
       },
+      {
+        id: 'beach-split',
+        label: 'Beach Editorial',
+        slots: 1,
+        zones: (w, h) => [
+          { x: 0, y: 0, w, h: Math.round(h * 0.6) }
+        ],
+      },
+      {
+        id: 'pinterest-triptych',
+        label: 'Pinterest Triptych',
+        slots: 3,
+        zones: (w, h, g = 4) => {
+          const sideW = Math.round(w * 0.22);
+          const centerW = w - sideW * 2 - g * 2;
+          const bandH = Math.round(h * 0.68);
+          const topOffset = Math.round(h * 0.16);
+          return [
+            { x: 0, y: topOffset, w: sideW, h: bandH },
+            { x: sideW + g, y: topOffset, w: centerW, h: bandH },
+            { x: sideW + g + centerW + g, y: topOffset, w: sideW, h: bandH },
+          ];
+        },
+      },
+      {
+        id: 'love-story-grid',
+        label: 'Asymmetric Checkerboard',
+        slots: 2,
+        zones: (w, h, g = 6) => {
+          const hw = (w - g) / 2;
+          const hh = (h - g) / 2;
+          return [
+            { x: 0, y: 0, w: hw, h: hh },
+            { x: hw + g, y: hh + g, w: hw, h: hh },
+          ];
+        },
+      },
+      {
+        id: 'overlapping-silhouette',
+        label: 'Overlapping Silhouette',
+        slots: 2,
+        zones: (w, h) => [
+          { x: 0, y: 0, w, h },
+          { x: Math.round(w * 0.22), y: Math.round(h * 0.35), w: Math.round(w * 0.56), h: Math.round(h * 0.48) }
+        ],
+      },
     ],
   },
   {
@@ -472,6 +518,8 @@ export const WEDDING_PRESETS = [
   { id: 'autumn-ember',     label: 'Autumn Ember',     vibe: 'Rich amber & rust tones',       filter: 'sepia(0.35) saturate(1.45) hue-rotate(-18deg) brightness(1.06) contrast(1.08)' },
   { id: 'dusty-lavender',   label: 'Dusty Lavender',   vibe: 'Misty lilac & romantic',        filter: 'hue-rotate(282deg) saturate(0.68) brightness(1.12) contrast(0.88)' },
   { id: 'faded-teal',       label: 'Faded Teal',       vibe: 'Moody editorial teal fade',     filter: 'hue-rotate(175deg) saturate(0.62) brightness(1.15) contrast(0.85)' },
+  { id: 'vintage-romance',  label: 'Vintage Romance',  vibe: 'Warm-faded film & retro greens', filter: 'contrast(0.82) brightness(0.92) sepia(0.18) saturate(0.85) hue-rotate(6deg)' },
+  { id: 'airy-coastal',     label: 'Airy Coastal',     vibe: 'Clean, bright sand & sea tones', filter: 'brightness(1.1) contrast(0.95) saturate(1.08) sepia(0.04)' },
 ];
 
 export const SPORTS_PRESETS = [

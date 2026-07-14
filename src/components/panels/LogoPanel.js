@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Upload, Trash2, FlipHorizontal } from 'lucide-react';
+import { Upload, Trash2, FlipHorizontal, RotateCw } from 'lucide-react';
 
 function Label({ children }) {
   return <div style={{ fontSize: 9, color: '#555', fontFamily: 'DM Sans, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{children}</div>;
@@ -22,7 +22,7 @@ const POSITION_PRESETS = [
   { id: 'bottom-right',  label: 'Bottom Right',  x: 0.88, y: 0.9  },
 ];
 
-export default function LogoPanel({ logoSettings, logoDataUrl, onUpdate, onLogoUpload, accentColor, selectedZone, onFlipZone }) {
+export default function LogoPanel({ logoSettings, logoDataUrl, onUpdate, onLogoUpload, accentColor, selectedZone, onFlipZone, onRotateZone }) {
   const fileRef = useRef();
   const ls = logoSettings || {};
   const upd = (k, v) => onUpdate({ ...ls, [k]: v });
@@ -128,14 +128,24 @@ export default function LogoPanel({ logoSettings, logoDataUrl, onUpdate, onLogoU
         <>
           <div style={{ borderTop: '1px solid #222', margin: '12px 0' }} />
           <Label>Zone Controls ({selectedZone})</Label>
-          <button
-            onClick={() => onFlipZone(selectedZone)}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded btn-hover"
-            style={{ background: '#111', border: '1px solid #2A2A2A', color: '#888', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontSize: 11 }}
-          >
-            <FlipHorizontal size={13} />
-            Flip Horizontal
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onFlipZone(selectedZone)}
+              className="flex-1 flex items-center justify-center gap-2 py-2 rounded btn-hover"
+              style={{ background: '#111', border: '1px solid #2A2A2A', color: '#888', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontSize: 11 }}
+            >
+              <FlipHorizontal size={13} />
+              Flip
+            </button>
+            <button
+              onClick={() => onRotateZone(selectedZone)}
+              className="flex-1 flex items-center justify-center gap-2 py-2 rounded btn-hover"
+              style={{ background: '#111', border: '1px solid #2A2A2A', color: '#888', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontSize: 11 }}
+            >
+              <RotateCw size={13} />
+              Rotate 90°
+            </button>
+          </div>
         </>
       )}
     </div>

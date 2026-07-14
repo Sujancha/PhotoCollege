@@ -68,16 +68,23 @@ async function renderSlideToCanvas(slide, photos, logoDataUrl, ratioId) {
       const dy = zone.y + (zone.h - dh) / 2 + panY;
 
       // Draw base image (no filter)
-      const drawImg = (extraTranslateX = 0) => {
-        if (photo.flipH) {
-          ctx.save();
-          ctx.translate(zone.x + zone.w + extraTranslateX, 0);
-          ctx.scale(-1, 1);
-          ctx.drawImage(img, -(dx - zone.x + dw) + extraTranslateX, dy, dw, dh);
-          ctx.restore();
-        } else {
-          ctx.drawImage(img, dx, dy, dw, dh);
+      const drawImg = () => {
+        ctx.save();
+        const cx = zone.x + zone.w / 2 + panX;
+        const cy = zone.y + zone.h / 2 + panY;
+        ctx.translate(cx, cy);
+
+        const rotateVal = slide.zoom?.rotate?.[zoneKey] || 0;
+        if (rotateVal !== 0) {
+          ctx.rotate((rotateVal * Math.PI) / 180);
         }
+
+        if (photo.flipH) {
+          ctx.scale(-1, 1);
+        }
+
+        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+        ctx.restore();
       };
 
       ctx.filter = 'none';

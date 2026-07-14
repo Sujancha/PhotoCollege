@@ -19,7 +19,7 @@ export default function RightSidebar({
   photos, presets, recentFonts,
   onApplyTemplate, onApplyPresetToZone, onApplyPresetToAll, onUpdatePresetOpacity,
   onUpdateTextBlock, onDeleteTextBlock, onApplyQuickStyle, onAddTextWithStyle,
-  onUpdateBorderSettings, onUpdateLogoSettings, logoDataUrl, onLogoUpload, onFlipZone,
+  onUpdateBorderSettings, onUpdateLogoSettings, logoDataUrl, onLogoUpload, onFlipZone, onRotateZone,
 }) {
   return (
     <div className="flex flex-col flex-shrink-0" style={{ width: 300, background: '#1A1A1A', borderLeft: '1px solid #2A2A2A', overflow: 'hidden' }}>
@@ -106,6 +106,7 @@ export default function RightSidebar({
             accentColor={accentColor}
             selectedZone={selectedZone}
             onFlipZone={onFlipZone}
+            onRotateZone={onRotateZone}
           />
         )}
       </div>

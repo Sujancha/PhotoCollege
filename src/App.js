@@ -268,6 +268,12 @@ export default function App() {
     }));
   }, [currentSlide]);
 
+  const rotatePhotoInZone = useCallback((zoneKey) => {
+    const currentRotate = currentSlide.zoom?.rotate?.[zoneKey] || 0;
+    const nextRotate = (currentRotate + 90) % 360;
+    updateZoom(zoneKey, 'rotate', nextRotate);
+  }, [currentSlide, updateZoom]);
+
   const swapZonePhotos = useCallback((fromZone, toZone) => {
     const pa = { ...currentSlide.photoAssignments };
     const fromPhoto = pa[fromZone]; const toPhoto = pa[toZone];
@@ -367,7 +373,7 @@ export default function App() {
           applyPresetToZone={applyPresetToZone} applyPresetToAll={applyPresetToAll}
           updatePresetOpacity={updatePresetOpacity}
           updateZoom={updateZoom} updateZoomPan={updateZoomPan}
-          swapZonePhotos={swapZonePhotos} flipPhotoInZone={flipPhotoInZone}
+          swapZonePhotos={swapZonePhotos} flipPhotoInZone={flipPhotoInZone} rotatePhotoInZone={rotatePhotoInZone}
           updateCurrentSlide={updateCurrentSlide}
           resetAllEffects={resetAllEffects} applyQuickStyle={applyQuickStyle}
           exportCurrentSlide={exportCurrentSlide} exporting={exporting} exportProgress={exportProgress}
@@ -473,6 +479,7 @@ export default function App() {
           logoDataUrl={brandKit.logoDataUrl || logoDataUrl}
           onLogoUpload={setLogoDataUrl}
           onFlipZone={flipPhotoInZone}
+          onRotateZone={rotatePhotoInZone}
         />
       </div>
 

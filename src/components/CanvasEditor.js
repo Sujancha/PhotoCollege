@@ -5,13 +5,13 @@ import { getTemplate, computeZones } from '../utils';
 const ALL_PRESETS = [...WEDDING_PRESETS, ...SPORTS_PRESETS];
 
 // Two-layer image: base (no filter) + filtered overlay at variable opacity
-function PhotoImageLayers({ url, panX, panY, flipH, imgCSSW, imgCSSH, filterStr, filterOpacity }) {
+function PhotoImageLayers({ url, panX, panY, flipH, rotate, imgCSSW, imgCSSH, filterStr, filterOpacity }) {
   const base = {
     position: 'absolute', top: '50%', left: '50%',
     ...(imgCSSW != null ? { width: imgCSSW, height: imgCSSH, minWidth: 'unset', minHeight: 'unset' }
       : { minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto' }),
     maxWidth: 'none', maxHeight: 'none',
-    transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))${flipH ? ' scaleX(-1)' : ''}`,
+    transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) rotate(${rotate || 0}deg)${flipH ? ' scaleX(-1)' : ''}`,
     transformOrigin: 'center center',
     pointerEvents: 'none',
   };
@@ -27,7 +27,7 @@ function PhotoImageLayers({ url, panX, panY, flipH, imgCSSW, imgCSSH, filterStr,
 
 // ─── PHOTO ZONE ──────────────────────────────────────────────────────────────────
 function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, presetOpacity, accentColor, isSelected,
-  onClick, onZoomDelta, flipH, panX, panY, imgCSSW, imgCSSH, onPan, onZoneDragStart, onZoneDrop }) {
+  onClick, onZoomDelta, flipH, rotate, panX, panY, imgCSSW, imgCSSH, onPan, onZoneDragStart, onZoneDrop }) {
 
   const presetObj = ALL_PRESETS.find(p => p.id === preset);
   const filterStr = presetObj?.filter || 'none';
@@ -202,7 +202,7 @@ function PhotoZone({ zone, zoneKey, zoneIndex, photoIndex, photo, preset, preset
       {photo?.url ? (
         <PhotoImageLayers
           url={photo.url}
-          panX={panX} panY={panY} flipH={flipH}
+          panX={panX} panY={panY} flipH={flipH} rotate={rotate}
           imgCSSW={imgCSSW} imgCSSH={imgCSSH}
           filterStr={filterStr} filterOpacity={presetOpacity ?? 1}
         />
@@ -531,6 +531,7 @@ export default function CanvasEditor({
               onClick={handleZoneClick}
               onZoomDelta={handleZoomDelta}
               flipH={photo?.flipH}
+              rotate={slide.zoom?.rotate?.[zoneKey] || 0}
               panX={(slide.zoom?.x?.[zoneKey] || 0) * displayScale}
               panY={(slide.zoom?.y?.[zoneKey] || 0) * displayScale}
               imgCSSW={imgCSSW}

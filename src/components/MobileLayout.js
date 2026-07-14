@@ -158,7 +158,7 @@ function ZonePhotoPicker({ zone, photos, currentSlide, onAssign, onUnassign, onA
 }
 
 // ─── More Panel (Borders + Logo) ──────────────────────────────────────────────
-function MobileMorePanel({ currentSlide, updateCurrentSlide, logoDataUrl, setLogoDataUrl, brandKit, selectedZone, flipPhotoInZone, accentColor }) {
+function MobileMorePanel({ currentSlide, updateCurrentSlide, logoDataUrl, setLogoDataUrl, brandKit, selectedZone, flipPhotoInZone, rotatePhotoInZone, accentColor }) {
   return (
     <div>
       <div style={{ padding: '10px 12px 4px', fontSize: 9, color: '#555', fontFamily: 'DM Sans, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
@@ -181,6 +181,7 @@ function MobileMorePanel({ currentSlide, updateCurrentSlide, logoDataUrl, setLog
         accentColor={accentColor}
         selectedZone={selectedZone}
         onFlipZone={flipPhotoInZone}
+        onRotateZone={rotatePhotoInZone}
       />
     </div>
   );
@@ -197,7 +198,7 @@ export default function MobileLayout({
   assignPhotoToZone, unassignZone,
   updateTextBlock, deleteTextBlock, addTextBlock, addTextBlockWithStyle,
   applyTemplate, applyPresetToZone, applyPresetToAll, updatePresetOpacity,
-  updateZoom, updateZoomPan, swapZonePhotos, flipPhotoInZone,
+  updateZoom, updateZoomPan, swapZonePhotos, flipPhotoInZone, rotatePhotoInZone,
   updateCurrentSlide,
   resetAllEffects, applyQuickStyle,
   exportCurrentSlide, exporting, exportProgress,
@@ -453,6 +454,7 @@ export default function MobileLayout({
               brandKit={brandKit}
               selectedZone={selectedZone}
               flipPhotoInZone={flipPhotoInZone}
+              rotatePhotoInZone={rotatePhotoInZone}
               accentColor={accentColor}
             />
           )}
